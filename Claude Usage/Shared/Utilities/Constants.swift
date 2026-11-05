@@ -65,6 +65,8 @@ enum Constants {
 
     // Claude Code notch HUD (hook listener + display)
     enum NotchHUD {
+        /// John's Top Shelf (TopShelf/) is the notch display; the built-in one stays off. Set to false to bring it back.
+        static let replacedByTopShelf = true
         static let host = "127.0.0.1"
         static let port: UInt16 = 19847
         /// Base URL prefix used in installed hook URLs; also matched by the

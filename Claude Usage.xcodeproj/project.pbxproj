@@ -87,6 +87,7 @@
 				05CD2CAE2EA985A100004C83 /* Sources */,
 				05CD2CAF2EA985A100004C83 /* Frameworks */,
 				05CD2CB02EA985A100004C83 /* Resources */,
+				TOPSHELF_HELPER_PHASE /* Top Shelf Now Playing helper */,
 			);
 			buildRules = (
 			);
@@ -200,6 +201,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		TOPSHELF_HELPER_PHASE /* Top Shelf Now Playing helper */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/TopShelfHelper/NowPlaying.m",
+				"$(SRCROOT)/TopShelfHelper/nowplaying.pl",
+			);
+			name = "Top Shelf Now Playing helper";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/libTopShelfNowPlaying.dylib",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/nowplaying.pl",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\n# Top Shelf's Now Playing helper: a small library run inside /usr/bin/perl (see TopShelfHelper/).\n# Built for every architecture of this build and signed so the app's own signature stays valid.\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"$DEST\"\nARCH_FLAGS=\"\"\nfor a in ${ARCHS}; do ARCH_FLAGS=\"$ARCH_FLAGS -arch $a\"; done\nxcrun clang -dynamiclib -fobjc-arc -O2 $ARCH_FLAGS -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} -framework Foundation \"${SRCROOT}/TopShelfHelper/NowPlaying.m\" -o \"$DEST/libTopShelfNowPlaying.dylib\"\ncp \"${SRCROOT}/TopShelfHelper/nowplaying.pl\" \"$DEST/nowplaying.pl\"\ncodesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" \"$DEST/libTopShelfNowPlaying.dylib\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		05CD2CAE2EA985A100004C83 /* Sources */ = {

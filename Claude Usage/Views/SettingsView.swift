@@ -307,7 +307,14 @@ struct SettingsView: View {
                 case .claudeCode:
                     ClaudeCodeView()
                 case .notchHUD:
-                    NotchHUDSettingsView()
+                    if Constants.NotchHUD.replacedByTopShelf {
+                        // Top Shelf replaced this display; its settings open from the gear on the open shelf.
+                        Text("Top Shelf now shows at the notch in place of this display. Its settings open from the gear button on the open shelf.")
+                            .foregroundStyle(.secondary)
+                            .padding()
+                    } else {
+                        NotchHUDSettingsView()
+                    }
                 case .shortcuts:
                     ShortcutsSettingsView()
                 case .updates:

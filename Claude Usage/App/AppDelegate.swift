@@ -248,6 +248,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     }
 
     private func updateNotchHUDServices() {
+        // John's Top Shelf (TopShelf/) replaces the tracker's own notch display. The old display's code stays in
+        // place but switched off: it never starts or installs its hooks, and any it installed earlier are removed
+        // (only its own entries; every other hook in ~/.claude/settings.json is kept). Flip the constant to undo.
+        if Constants.NotchHUD.replacedByTopShelf {
+            NotchHookServer.shared.stop()
+            NotchHUDController.shared.stop()
+            if !TopShelfHost.isRunningTests, NotchHookInstaller.shared.checkStatus() != .notInstalled {
+                _ = NotchHookInstaller.shared.uninstall()
+            }
+            TopShelfHost.shared.start()
+            return
+        }
         if SharedDataStore.shared.loadNotchHUDEnabled() {
             NotchHUDController.shared.start()
             NotchHookServer.shared.start()
