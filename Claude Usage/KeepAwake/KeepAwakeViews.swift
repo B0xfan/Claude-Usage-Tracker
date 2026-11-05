@@ -187,6 +187,22 @@ struct KeepAwakeSettingsView: View {
 
 @MainActor
 enum KeepAwakePreviewRenderer {
+    static func isMostlyWhite(_ data: Data) -> Bool {
+        guard let image = NSImage(data: data),
+              let bitmap = NSBitmapImageRep(data: image.tiffRepresentation ?? Data()) else { return true }
+        var white = 0
+        let samples = 400
+        for index in 0..<samples {
+            let x = index % 20 * max(1, bitmap.pixelsWide / 20)
+            let y = index / 20 * max(1, bitmap.pixelsHigh / 20)
+            if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB),
+               color.redComponent > 0.9 && color.greenComponent > 0.9 && color.blueComponent > 0.9 {
+                white += 1
+            }
+        }
+        return white > samples / 2
+    }
+
     static func renderPopup(controller: KeepAwakeController, scheme: ColorScheme, to url: URL) throws {
         let view = VStack(spacing: 0) {
             KeepAwakePopoverSection(controller: controller)
@@ -198,7 +214,24 @@ enum KeepAwakePreviewRenderer {
     }
 
     static func renderSettings(controller: KeepAwakeController, scheme: ColorScheme, to url: URL) throws {
-        try render(KeepAwakeSettingsView(controller: controller), scheme: scheme, size: CGSize(width: 530, height: 1050), to: url)
+        // Use the real Settings page and its vibrancy backgrounds, but no NSWindow.
+        // A hidden SettingsWindowBuilder window keeps the XCTest host alive on macOS 27.
+        let content = HStack(spacing: 0) {
+            AppSettingsSection(selectedSection: .constant(.keepAwake))
+                .padding(12)
+                .frame(width: 190, alignment: .topLeading)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(SidebarVisualEffect())
+            KeepAwakeSettingsView(controller: controller)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(scheme == .dark ? Color.black.opacity(0.15) : Color.white.opacity(0.3))
+        }
+        .frame(width: 720, height: 1050)
+        .background(SettingsBackground())
+        let hosting = NSHostingView(rootView: content.environment(\.colorScheme, scheme))
+        hosting.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        hosting.frame = NSRect(origin: .zero, size: CGSize(width: 720, height: 1050))
+        try capture(hosting, to: url)
     }
 
     static func renderContextMenu(controller: KeepAwakeController, scheme: ColorScheme, to url: URL) throws {
@@ -242,18 +275,23 @@ enum KeepAwakePreviewRenderer {
         try render(view, scheme: scheme, size: nil, to: url)
     }
 
+    private static func capture(_ view: NSView, to url: URL) throws {
+        view.layoutSubtreeIfNeeded()
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+            throw NSError(domain: "KeepAwakePreviewRenderer", code: 1)
+        }
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        guard let data = bitmap.representation(using: .png, properties: [:]) else {
+            throw NSError(domain: "KeepAwakePreviewRenderer", code: 2)
+        }
+        try data.write(to: url)
+    }
+
     private static func render<Content: View>(_ view: Content, scheme: ColorScheme, size: CGSize?, to url: URL) throws {
         let hosting = NSHostingView(rootView: view.environment(\.colorScheme, scheme))
         let fitting = size ?? hosting.fittingSize
         hosting.frame = NSRect(origin: .zero, size: fitting)
         hosting.layoutSubtreeIfNeeded()
-        guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
-            throw NSError(domain: "KeepAwakePreviewRenderer", code: 1)
-        }
-        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-        guard let data = bitmap.representation(using: .png, properties: [:]) else {
-            throw NSError(domain: "KeepAwakePreviewRenderer", code: 2)
-        }
-        try data.write(to: url)
+        try capture(hosting, to: url)
     }
 }

@@ -167,7 +167,6 @@ final class KeepAwakeTests: XCTestCase {
     }
 
     func testSettingsRenderWithChosenAppsAndBatteryEnabled() throws {
-        let environment = controller.environment as! KeepAwakeEnvironmentSpy
         controller.update(\.appsTrigger, value: true)
         controller.setChosenApps([KeepAwakeApp(bundleID: "us.zoom.xos", name: "Zoom"), KeepAwakeApp(bundleID: "com.obsproject.obs-studio", name: "OBS")])
         controller.update(\.batteryCutoff, value: true)
@@ -260,6 +259,13 @@ final class KeepAwakeTests: XCTestCase {
         XCTAssertEqual(KeepAwakeMarkColor.allCases.map(\.rawValue), ["orange", "green", "teal", "blue"])
         let image = controller.menuBarAccessoryImage(isDarkMode: true)
         XCTAssertGreaterThan(image.size.width, 0)
+    }
+
+    func testDarkSettingsPreviewUsesActualSettingsBackgrounds() throws {
+        let controller = self.controller!
+        try KeepAwakePreviewRenderer.renderSettings(controller: controller, scheme: .dark, to: URL(fileURLWithPath: "/tmp/usage-shelf-keep-awake-shots/settings-dark.png"))
+        let data = try Data(contentsOf: URL(fileURLWithPath: "/tmp/usage-shelf-keep-awake-shots/settings-dark.png"))
+        XCTAssertFalse(KeepAwakePreviewRenderer.isMostlyWhite(data), "Dark Settings must have the real dark window background, not a detached white canvas")
     }
 
     func testOffscreenChangedScreensRenderLightAndDark() throws {
