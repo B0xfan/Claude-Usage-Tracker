@@ -314,6 +314,8 @@ struct SettingsView: View {
                     ShortcutsSettingsView()
                 case .popover:
                     PopoverSettingsView()
+                case .keepAwake:
+                    KeepAwakeSettingsView()
                 case .debug:
                     DebugNetworkLogView()
                 case .about:
@@ -570,6 +572,7 @@ enum SettingsSection: String, CaseIterable {
     case notchHUD
     case shortcuts
     case popover
+    case keepAwake
     case debug
     case about
 
@@ -589,6 +592,7 @@ enum SettingsSection: String, CaseIterable {
         case .notchHUD: return "notch.hud.section_title".localized
         case .shortcuts: return "section.shortcuts_title".localized
         case .popover: return "section.popover_title".localized
+        case .keepAwake: return "Keep Awake"
         case .debug: return "section.debug_title".localized
         case .about: return "settings.about".localized
         }
@@ -610,6 +614,7 @@ enum SettingsSection: String, CaseIterable {
         case .notchHUD: return "inset.filled.topthird.rectangle"
         case .shortcuts: return "keyboard"
         case .popover: return "rectangle.topthird.inset.filled"
+        case .keepAwake: return "sun.max.fill"
         case .debug: return "ladybug.fill"
         case .about: return "info.circle.fill"
         }
@@ -631,6 +636,7 @@ enum SettingsSection: String, CaseIterable {
         case .notchHUD: return "notch.hud.section_desc".localized
         case .shortcuts: return "section.shortcuts_desc".localized
         case .popover: return "section.popover_desc".localized
+        case .keepAwake: return "Stop your Mac from sleeping when you need it awake"
         case .debug: return "section.debug_desc".localized
         case .about: return "settings.about.description".localized
         }

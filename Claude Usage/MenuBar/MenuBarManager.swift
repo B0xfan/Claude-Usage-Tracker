@@ -71,6 +71,7 @@ class MenuBarManager: NSObject, ObservableObject {
     private let networkMonitor = NetworkMonitor.shared
     private let profileManager = ProfileManager.shared
     private let autoStartService = AutoStartSessionService.shared
+    let keepAwake = KeepAwakeController.shared
 
     // Combine cancellables for profile observation
     private var cancellables = Set<AnyCancellable>()
@@ -230,6 +231,14 @@ class MenuBarManager: NSObject, ObservableObject {
         // Setup wake-from-sleep observer for auto-refresh
         setupWakeObserver()
 
+        // Keep awake listens for lock, power, display and app changes. Pointer permission
+        // is only checked, never requested at launch.
+        keepAwake.startListening()
+        keepAwake.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateAllStatusBarIcons() }
+            .store(in: &cancellables)
+
         // Setup global keyboard shortcuts
         setupShortcuts()
 
@@ -254,6 +263,7 @@ class MenuBarManager: NSObject, ObservableObject {
 
     func cleanup() {
         ShortcutManager.shared.stopListening()
+        keepAwake.cleanup()
         refreshTimer?.invalidate()
         refreshTimer = nil
         networkMonitor.stopMonitoring()
@@ -621,6 +631,13 @@ class MenuBarManager: NSObject, ObservableObject {
     private func showContextMenu(for button: NSStatusBarButton?) {
         let menu = NSMenu()
 
+        let keepAwakeItem = NSMenuItem(title: "Keep awake", action: #selector(toggleKeepAwake), keyEquivalent: "")
+        keepAwakeItem.target = self
+        keepAwakeItem.state = keepAwake.isActive ? .on : .off
+        menu.addItem(keepAwakeItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let refreshItem = NSMenuItem(title: "common.refresh".localized, action: #selector(contextMenuRefresh), keyEquivalent: "")
         refreshItem.target = self
         menu.addItem(refreshItem)
@@ -646,6 +663,10 @@ class MenuBarManager: NSObject, ObservableObject {
                 menu.popUp(positioning: nil, at: NSPoint(x: screenRect.origin.x, y: screenRect.origin.y), in: nil)
             }
         }
+    }
+
+    @objc private func toggleKeepAwake() {
+        keepAwake.toggle()
     }
 
     @objc private func contextMenuRefresh() {
