@@ -72,7 +72,7 @@ struct ShelfView: View {
     private var closedContent: some View {
         HStack(spacing: 0) {
             if model.hasBanners {
-                leftItem.frame(width: 14, height: 14).padding(.leading, ShelfModel.flare + 11.5)
+                leftItem.frame(width: leftSize, height: leftSize).padding(.leading, ShelfModel.flare + (ShelfModel.side - leftSize) / 2)
                 Spacer(minLength: 0)   // the camera notch itself
                 rightItem.frame(width: 14, height: 14).padding(.trailing, ShelfModel.flare + 11.5)
             } else {
@@ -85,6 +85,9 @@ struct ShelfView: View {
             if model.openMode != .hover { model.open(model.agents.activeState == .attention ? .agents : .tray) }
         }
     }
+
+    /// The starburst is drawn at Agent Monitor's size (its dots only fill the middle of the box); album art stays small.
+    private var leftSize: CGFloat { model.agents.activeState != nil ? min(30, model.geometry.notchHeight - 2) : 14 }
 
     @ViewBuilder private var leftItem: some View {
         if let state = model.agents.activeState {
