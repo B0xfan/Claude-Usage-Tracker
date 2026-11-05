@@ -75,6 +75,24 @@ final class MenuBarIconRenderer {
 
         // Render based on icon style for Session and Week
         switch config.iconStyle {
+        case .rings:
+            let sessionConfig = globalConfig.config(for: .session) ?? config
+            let weekConfig = globalConfig.config(for: .week) ?? config
+            let session = getMetricData(
+                metricType: .session, config: sessionConfig, usage: usage, apiUsage: apiUsage,
+                showRemaining: globalConfig.showRemainingPercentage, usePaceColoring: globalConfig.usePaceColoring
+            )
+            let week = getMetricData(
+                metricType: .week, config: weekConfig, usage: usage, apiUsage: apiUsage,
+                showRemaining: globalConfig.showRemainingPercentage, usePaceColoring: globalConfig.usePaceColoring
+            )
+            return createCombinedRingsIcon(
+                sessionPercentage: session.percentage,
+                weekPercentage: week.percentage,
+                sessionWarning: session.statusLevel == .critical,
+                weekWarning: week.statusLevel == .critical,
+                isDarkMode: isDarkMode
+            )
         case .battery:
             return createBatteryStyle(
                 metricType: metricType,
@@ -753,7 +771,9 @@ final class MenuBarIconRenderer {
         weekTimeMarker: CGFloat? = nil,
         sessionPaceStatus: PaceStatus? = nil,
         weekPaceStatus: PaceStatus? = nil,
-        showPaceMarker: Bool = false
+        showPaceMarker: Bool = false,
+        sessionColorOverride: NSColor? = nil,
+        weekColorOverride: NSColor? = nil
     ) -> NSImage {
         let size: CGFloat = 24
         let image = NSImage(size: NSSize(width: size, height: size))
@@ -766,8 +786,8 @@ final class MenuBarIconRenderer {
         // Use isDarkMode to determine correct foreground color for menu bar
         let foregroundColor = menuBarForegroundColor(isDarkMode: isDarkMode)
         let textColor: NSColor = foregroundColor
-        let sessionColor: NSColor = getColor(for: sessionStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
-        let weekColor: NSColor = getColor(for: weekStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
+        let sessionColor: NSColor = sessionColorOverride ?? getColor(for: sessionStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
+        let weekColor: NSColor = weekColorOverride ?? getColor(for: weekStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
         let backgroundColor: NSColor = foregroundColor.withAlphaComponent(0.15)
 
         // Outer ring (Session) - larger radius, thicker stroke - Session is primary/more important
@@ -872,6 +892,33 @@ final class MenuBarIconRenderer {
         let labelY = center.y - labelSize.height / 2
         labelString.draw(at: NSPoint(x: labelX, y: labelY), withAttributes: labelAttributes)
 
+        return image
+    }
+
+    /// "Both Rings" style: one icon for both numbers. The outer ring is the weekly
+    /// number and the inner ring the 5-hour number. Plain menu bar color (a template
+    /// image) unless a number is near its limit; then that ring turns orange.
+    func createCombinedRingsIcon(
+        sessionPercentage: Double,
+        weekPercentage: Double,
+        sessionWarning: Bool,
+        weekWarning: Bool,
+        isDarkMode: Bool
+    ) -> NSImage {
+        // createConcentricIcon draws its "session" values on the outer ring,
+        // so the weekly number goes in that slot and the 5-hour number inside.
+        let image = createConcentricIcon(
+            sessionPercentage: weekPercentage,
+            weekPercentage: sessionPercentage,
+            sessionStatus: .safe,
+            weekStatus: .safe,
+            profileInitial: "",
+            monochromeMode: true,
+            isDarkMode: isDarkMode,
+            sessionColorOverride: weekWarning ? .systemOrange : nil,
+            weekColorOverride: sessionWarning ? .systemOrange : nil
+        )
+        image.isTemplate = !(sessionWarning || weekWarning)
         return image
     }
 

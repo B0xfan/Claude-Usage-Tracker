@@ -622,7 +622,9 @@ final class StatusBarUIManager {
                 showNextSessionTime: metricConfig.showNextSessionTime
             )
 
-            image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+            if metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
+                image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+            }
             button.image = image
         }
     }
@@ -661,7 +663,9 @@ final class StatusBarUIManager {
             showNextSessionTime: metricConfig.showNextSessionTime
         )
 
-        image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+        if metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
+            image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+        }
         button.image = image
     }
 
