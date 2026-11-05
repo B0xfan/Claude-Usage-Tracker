@@ -19,7 +19,7 @@ struct TopShelfSettingsView: View {
             Section("Menu bar") {
                 Toggle("Show menu bar icon", isOn: $model.showMenuBarIcon)
                     .toggleStyle(.switch)
-                LabeledContent("Quit (also quits the usage tracker)") {   // Top Shelf now lives inside the tracker
+                LabeledContent("Quit Usage Shelf") {   // Top Shelf now lives inside the tracker
                     Button("Quit") { NSApp.terminate(nil) }
                 }
             }
@@ -85,7 +85,7 @@ enum SettingsWindow {
         let host = NSHostingController(rootView: TopShelfSettingsView(model: model))
         host.sizingOptions = []   // the window keeps the size given below instead of growing to fit everything
         let w = NSWindow(contentViewController: host)
-        w.title = "Top Shelf Settings"
+        w.title = "Usage Shelf Settings"
         w.styleMask = [.titled, .closable, .resizable]
         w.isReleasedWhenClosed = false
         return w
@@ -122,7 +122,7 @@ struct WeatherSettings: View {
             }
             .pickerStyle(.segmented)
             if weather.source == .current && weather.locationOff {
-                Text("Location access is off for Top Shelf, so it can't tell where you are. Choose a place instead, or allow Top Shelf in System Settings, Privacy & Security, Location Services.")
+                Text("Location access is off for Usage Shelf, so it can't tell where you are. Choose a place instead, or allow Usage Shelf in System Settings, Privacy & Security, Location Services.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             if weather.source == .place {

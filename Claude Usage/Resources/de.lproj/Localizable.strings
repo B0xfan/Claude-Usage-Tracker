@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    German (Deutsch)
    Created by Claude Code on 2025-12-27.
@@ -10,9 +10,9 @@
 /* MARK: - App Info */
 /* ==================== */
 "app.name" = "Claude Nutzungstracker";
-"app.window.main" = "Claude-Nutzung";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "Einstellungen";
-"app.window.github_prompt" = "Claude Usage Tracker Unterstützen";
+"app.window.github_prompt" = "Usage Shelf Unterstützen";
 
 /* ==================== */
 /* MARK: - Common Actions */
@@ -90,7 +90,7 @@
 /* MARK: - General Settings */
 /* ==================== */
 "general.launch_at_login" = "Beim Anmelden starten";
-"general.launch_at_login.description" = "Claude Usage Tracker automatisch starten, wenn Sie sich an Ihrem Mac anmelden";
+"general.launch_at_login.description" = "Usage Shelf automatisch starten, wenn Sie sich an Ihrem Mac anmelden";
 "general.refresh_interval" = "Aktualisierungsintervall";
 "general.refresh_interval.description" = "Kürzere Intervalle liefern Echtzeit-Daten, können aber die Batterie belasten";
 "general.check_overage_limit" = "Zusätzliches Nutzungslimit Prüfen";
@@ -134,7 +134,7 @@
 /* ==================== */
 /* MARK: - Setup Wizard */
 /* ==================== */
-"setup.welcome.title" = "Willkommen bei Claude Usage Tracker";
+"setup.welcome.title" = "Willkommen bei Usage Shelf";
 "setup.welcome.subtitle" = "Konfigurieren Sie Ihren API-Zugriff, um die Nutzungsverfolgung zu starten";
 "setup.step.get_session_key" = "Holen Sie sich Ihren Sitzungsschlüssel";
 "setup.step.get_session_key.description" = "Sie müssen Ihren Sitzungsschlüssel von claude.ai extrahieren";
@@ -167,7 +167,6 @@
 "about.report_issue" = "Problem Melden";
 "about.send_feedback" = "Feedback Senden";
 "about.mit_license" = "MIT-Lizenz • Open Source";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Icon Styles */
@@ -266,7 +265,7 @@
 /* ==================== */
 /* MARK: - GitHub Star Prompt */
 /* ==================== */
-"github.enjoy_app" = "Gefällt Ihnen Claude Usage Tracker?";
+"github.enjoy_app" = "Gefällt Ihnen Usage Shelf?";
 "github.star_description" = "Wenn Ihnen diese App geholfen hat, geben Sie ihr bitte einen Stern auf GitHub! Dies hilft anderen, das Projekt zu entdecken und motiviert die weitere Entwicklung.";
 "github.star_button" = "Stern auf GitHub";
 "github.maybe_later" = "Vielleicht Später";
@@ -701,8 +700,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -819,19 +816,6 @@
 "history.export.json" = "Als JSON exportieren";
 "history.export.csv" = "Als CSV exportieren";
 "history.chart.now" = "Jetzt";
-"support.title" = "Projekt Unterstützen";
-"support.subtitle" = "Claude Usage Tracker ist kostenlos und quelloffen";
-"support.all_features_free" = "Alle Funktionen Sind Kostenlos";
-"support.all_features_desc" = "Jede Funktion in dieser App ist vollständig kostenlos. Keine Premium-Stufen, keine Bezahlschranken, keine Abonnements.";
-"support.open_source" = "Open Source";
-"support.open_source_desc" = "Der Quellcode ist öffentlich auf GitHub verfügbar. Sie können ihn einsehen, ändern und zum Projekt beitragen.";
-"support.no_tracking" = "Kein Tracking";
-"support.no_tracking_desc" = "Ihre Privatsphäre ist wichtig. Keine Analysen, keine Telemetrie, keine Datenerfassung. Alles bleibt auf Ihrem Mac.";
-"support.message" = "Wenn Sie diese App nützlich finden, erwägen Sie, ihre Entwicklung zu unterstützen";
-"support.buy_coffee" = "Mir einen Kaffee kaufen";
-"support.footer" = "Ihre Unterstützung hält dieses Projekt am Leben und wachsen";
-"support.also_support" = "Sie können auch unterstützen durch";
-"support.star_github" = "Sternebewertung auf GitHub";
 "debug.title" = "Debug-Tools";
 "debug.subtitle" = "Netzwerkanfragen für Fehlerbehebung und Diagnose protokollieren";
 "debug.network_logger" = "Netzwerkanfragen-Logger";
@@ -1022,8 +1006,6 @@
 "menubar.total" = "Gesamt";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "Dieser Platz ist für Sponsoren verfügbar";
-"sponsor.slot_cta" = "Kontakt aufnehmen";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Codex-Konto";
@@ -1088,8 +1070,3 @@
 "launcher.verify" = "Anmeldung prüfen";
 "launcher.path_warning" = "~/.local/bin ist nicht in deinem PATH. Füge diese Zeile deinem Shell-Profil hinzu:";
 "launcher.install_failed" = "Starter konnte nicht installiert werden: %@";
-"support.popup_title" = "Hi, ich bin Hamed 👋";
-"support.popup_later" = "Vielleicht später";
-"support.popup_signature" = "das Ein-Personen-Team hinter Claude Usage";
-"support.popup_body" = "Kostenlos, Open Source, von einer Person gebaut — ohne Werbung, ohne Tracking. Hat es dich je vor einem verbrannten Session-Limit bewahrt, hält ein Kaffee es am Leben.";
-"support.popup_days" = "Behält deine Limits seit %d Tagen im Blick — für immer kostenlos";

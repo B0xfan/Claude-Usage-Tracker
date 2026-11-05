@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    简体中文 (简体中文)
    Created by Claude Code on 2026-01-27.
@@ -9,10 +9,10 @@
 /* ==================== */
 /* MARK: - App Info */
 /* ==================== */
-"app.name" = "Claude Usage Tracker";
-"app.window.main" = "Claude Usage";
+"app.name" = "Usage Shelf";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "设置";
-"app.window.github_prompt" = "支持 Claude Usage Tracker";
+"app.window.github_prompt" = "支持 Usage Shelf";
 
 /* ==================== */
 /* MARK: - Common Actions */
@@ -97,7 +97,7 @@
 /* MARK: - General Settings */
 /* ==================== */
 "general.launch_at_login" = "登录时启动";
-"general.launch_at_login.description" = "登录 Mac 时自动启动 Claude Usage Tracker";
+"general.launch_at_login.description" = "登录 Mac 时自动启动 Usage Shelf";
 "general.refresh_interval" = "刷新间隔";
 "general.refresh_interval.description" = "较短的间隔提供更实时的数据，但可能影响电池寿命";
 "general.check_overage_limit" = "检查额外使用限制";
@@ -141,7 +141,7 @@
 /* ==================== */
 /* MARK: - Setup Wizard */
 /* ==================== */
-"setup.welcome.title" = "欢迎使用 Claude Usage Tracker";
+"setup.welcome.title" = "欢迎使用 Usage Shelf";
 "setup.welcome.subtitle" = "配置您的 API 访问以开始跟踪使用情况";
 "setup.step.get_session_key" = "获取您的会话密钥";
 "setup.step.get_session_key.description" = "您需要从 claude.ai 提取您的会话密钥";
@@ -176,7 +176,6 @@
 "about.report_issue" = "报告问题";
 "about.send_feedback" = "发送反馈";
 "about.mit_license" = "MIT 许可证 • 开源";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Updates Settings */
@@ -288,7 +287,7 @@
 /* ==================== */
 /* MARK: - GitHub Star Prompt */
 /* ==================== */
-"github.enjoy_app" = "喜欢 Claude Usage Tracker 吗？";
+"github.enjoy_app" = "喜欢 Usage Shelf 吗？";
 "github.star_description" = "如果这个应用对您有帮助，请在 GitHub 上给它标星！这有助于其他人发现项目并激励持续开发。";
 "github.star_button" = "在 GitHub 上标星";
 "github.maybe_later" = "稍后再说";
@@ -682,8 +681,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -817,19 +814,6 @@
 "history.export.json" = "导出为JSON";
 "history.export.csv" = "导出为CSV";
 "history.chart.now" = "现在";
-"support.title" = "支持项目";
-"support.subtitle" = "Claude使用量跟踪器是免费和开源的";
-"support.all_features_free" = "所有功能都是免费的";
-"support.all_features_desc" = "此应用中的每个功能都是完全免费的。没有高级层、没有付费墙、没有订阅。";
-"support.open_source" = "开源";
-"support.open_source_desc" = "源代码在GitHub上公开可用。您可以检查、修改并为项目做出贡献。";
-"support.no_tracking" = "无跟踪";
-"support.no_tracking_desc" = "您的隐私很重要。没有分析、没有遥测、没有数据收集。一切都保留在您的Mac上。";
-"support.message" = "如果您觉得这个应用有用，请考虑支持其开发";
-"support.buy_coffee" = "请我喝咖啡";
-"support.footer" = "您的支持有助于保持这个项目的活力和增长";
-"support.also_support" = "您还可以通过以下方式支持";
-"support.star_github" = "在GitHub上加星";
 "debug.title" = "调试工具";
 "debug.subtitle" = "记录网络请求以进行故障排除和诊断";
 "debug.network_logger" = "网络请求记录器";
@@ -1008,8 +992,6 @@
 "notch.server.retry" = "重试";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "此位置开放赞助";
-"sponsor.slot_cta" = "与我联系";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Codex 账户";
@@ -1074,8 +1056,3 @@
 "launcher.verify" = "检查登录";
 "launcher.path_warning" = "~/.local/bin 不在你的 PATH 中。请将此行添加到你的 shell 配置文件：";
 "launcher.install_failed" = "无法安装启动器：%@";
-"support.popup_title" = "你好，我是 Hamed 👋";
-"support.popup_later" = "以后再说";
-"support.popup_signature" = "Claude Usage 背后的一人团队";
-"support.popup_body" = "免费、开源、一人开发——没有广告，没有跟踪。如果它曾帮你避免烧掉会话额度，一杯咖啡就能让它继续前进。";
-"support.popup_days" = "已守护你的额度 %d 天 — 永久免费";

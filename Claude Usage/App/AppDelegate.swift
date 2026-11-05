@@ -25,12 +25,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         // across app updates and re-embed fresh Cloudflare clearance cookies.
         try? StatuslineService.shared.updateScriptsIfInstalled()
 
-        // Initialize update manager to enable automatic update checks
-        _ = UpdateManager.shared
-
-        // Monthly support reminder (first check is delayed past startup)
-        SupportReminderService.shared.start()
-
         // Request notification permissions
         requestNotificationPermissions()
 
@@ -49,9 +43,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         // `menuBarManager` reference even if the wizard never visibly opens.
         menuBarManager = MenuBarManager()
 
-        // Start 24-hour heartbeat ping to track active app usage
-        HeartbeatService.shared.start()
-
         // Claude Code notch HUD (opt-in): start the hook listener + HUD when
         // enabled, and react to the settings toggle at runtime.
         updateNotchHUDServices()
@@ -69,37 +60,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             showSetupWizardManually()
             // Mark that wizard has been shown once
             SharedDataStore.shared.markWizardShown()
-        }
-
-        // Track first launch date for GitHub star prompt
-        if SharedDataStore.shared.loadFirstLaunchDate() == nil {
-            SharedDataStore.shared.saveFirstLaunchDate(Date())
-        }
-
-        // TESTING: Check for launch argument to force GitHub star prompt
-        if CommandLine.arguments.contains("--show-github-prompt") {
-            SharedDataStore.shared.resetGitHubStarPromptForTesting()
-            SharedDataStore.shared.saveFirstLaunchDate(Date().addingTimeInterval(-2 * 24 * 60 * 60))
-        }
-
-        // TESTING: Check for launch argument to force feedback prompt
-        if CommandLine.arguments.contains("--show-feedback-prompt") {
-            SharedDataStore.shared.resetFeedbackPromptForTesting()
-            SharedDataStore.shared.saveFirstLaunchDate(Date().addingTimeInterval(-8 * 24 * 60 * 60))
-        }
-
-        // Check if we should show GitHub star prompt (with a slight delay to not interrupt app startup)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            if SharedDataStore.shared.shouldShowGitHubStarPrompt() {
-                self?.menuBarManager?.showGitHubStarPrompt()
-            }
-        }
-
-        // Check if we should show feedback prompt (after GitHub prompt, avoid overlap)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
-            if SharedDataStore.shared.shouldShowFeedbackPrompt() {
-                self?.menuBarManager?.showFeedbackPrompt()
-            }
         }
 
         // Headless support: delayed retry for Remote Desktop scenarios
@@ -206,7 +166,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         LoggingService.shared.log("AppDelegate: Created hosting controller")
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Claude Usage Tracker Setup"
+        window.title = "Usage Shelf Setup"
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.center()
         window.isReleasedWhenClosed = false

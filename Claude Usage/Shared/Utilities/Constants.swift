@@ -164,9 +164,6 @@ enum Constants {
         static let critical: Double = 95.0
     }
 
-    // GitHub repository
-    static let githubRepoURL = "https://github.com/hamed-elfayome/Claude-Usage-Tracker"
-
     // GitHub star prompt timing (in seconds)
     enum GitHubPromptTiming {
         static let initialDelay: TimeInterval = 24 * 60 * 60  // 1 day
@@ -203,12 +200,5 @@ enum Constants {
         static let popoverSize = NSSize(width: 320, height: 600)
         /// Height of the system NSPopover arrow (macOS standard ~13pt)
         static let popoverArrowHeight: CGFloat = 13
-    }
-
-    // GitHub Repository Info
-    enum GitHub {
-        static let owner = "hamed-elfayome"
-        static let repo = "Claude-Usage-Tracker"
-        static let repoURL = "https://github.com/\(owner)/\(repo)"
     }
 }

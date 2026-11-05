@@ -93,7 +93,7 @@ jobs:
 
       - name: Sign App Bundle
         run: |
-          APP_PATH="build/Build/Products/Release/Claude Usage.app"
+          APP_PATH="build/Build/Products/Release/Usage Shelf.app"
 
           echo "Using signing identity: $SIGNING_IDENTITY"
           echo "Signing Sparkle framework components in correct order..."
@@ -148,7 +148,7 @@ jobs:
 
       - name: Verify Code Signature
         run: |
-          APP_PATH="build/Build/Products/Release/Claude Usage.app"
+          APP_PATH="build/Build/Products/Release/Usage Shelf.app"
 
           echo "Verifying code signature..."
           # Verify signature is valid
@@ -172,7 +172,7 @@ jobs:
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
-          APP_PATH="build/Build/Products/Release/Claude Usage.app"
+          APP_PATH="build/Build/Products/Release/Usage Shelf.app"
 
           echo "Creating ZIP for notarization..."
           ditto -c -k --keepParent "$APP_PATH" "notarization.zip"
@@ -207,7 +207,7 @@ jobs:
 
           # Copy app bundle (preserving attributes and signatures)
           echo "Copying signed and notarized app bundle..."
-          cp -pR "build/Build/Products/Release/Claude Usage.app" release/
+          cp -pR "build/Build/Products/Release/Usage Shelf.app" release/
 
           # Create ZIP archive using ditto (preserves code signatures and notarization)
           echo "Creating release ZIP..."
@@ -266,19 +266,6 @@ jobs:
         env:
           # Use PAT instead of GITHUB_TOKEN to trigger downstream workflows
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-
-      - name: Trigger downstream workflows
-        # A release published with the default GITHUB_TOKEN emits no
-        # `release: published` event (recursion guard), and the RELEASE_TOKEN
-        # PAT fallback proved fragile (v3.3.0 shipped with neither downstream
-        # workflow firing). workflow_dispatch via the API is the documented
-        # chaining path and works with the default token.
-        run: |
-          gh workflow run generate-appcast.yml -f release_tag="${{ github.ref_name }}"
-          gh workflow run update-homebrew-cask.yml -f release_tag="${{ github.ref_name }}"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
 
       - name: Release Summary
         run: |

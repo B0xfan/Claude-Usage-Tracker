@@ -50,7 +50,7 @@ class UsageHistoryService {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? Constants.ClaudePaths.homeDirectory.appendingPathComponent("Library/Application Support")
         let dir = base
-            .appendingPathComponent("Claude Usage", isDirectory: true)
+            .appendingPathComponent(LegacyDataMigration.newSupportFolderName, isDirectory: true)
             .appendingPathComponent("history", isDirectory: true)
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

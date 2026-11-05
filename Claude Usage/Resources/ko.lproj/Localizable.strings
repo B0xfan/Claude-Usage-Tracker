@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    Korean (한국어)
    Created by Claude Code on 2026-01-11.
@@ -10,9 +10,9 @@
 /* MARK: - App Info */
 /* ==================== */
 "app.name" = "Claude 사용량 추적기";
-"app.window.main" = "Claude 사용량";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "설정";
-"app.window.github_prompt" = "Claude Usage Tracker 지원하기";
+"app.window.github_prompt" = "Usage Shelf 지원하기";
 
 /* ==================== */
 /* MARK: - Common Actions */
@@ -332,8 +332,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Additional Keys */
@@ -509,7 +507,6 @@
 "about.report_issue" = "이슈 신고";
 "about.send_feedback" = "피드백 보내기";
 "about.check_updates" = "업데이트 확인";
-"about.copyright" = "© 2025 Hamed Elfayome";
 "about.mit_license" = "MIT 라이선스 • 오픈 소스";
 "about.run_setup_wizard" = "설정 마법사 실행";
 
@@ -830,19 +827,6 @@
 "history.export.json" = "JSON으로 내보내기";
 "history.export.csv" = "CSV로 내보내기";
 "history.chart.now" = "지금";
-"support.title" = "프로젝트 지원";
-"support.subtitle" = "Claude 사용량 추적기는 무료이며 오픈 소스입니다";
-"support.all_features_free" = "모든 기능이 무료";
-"support.all_features_desc" = "이 앱의 모든 기능은 완전히 무료입니다. 프리미엄 계층, 유료 장벽, 구독이 없습니다.";
-"support.open_source" = "오픈 소스";
-"support.open_source_desc" = "소스 코드는 GitHub에서 공개적으로 사용 가능합니다. 검사하고, 수정하고, 프로젝트에 기여할 수 있습니다.";
-"support.no_tracking" = "추적 없음";
-"support.no_tracking_desc" = "귀하의 개인 정보는 중요합니다. 분석, 원격 측정, 데이터 수집이 없습니다. 모든 것이 Mac에 남아 있습니다.";
-"support.message" = "이 앱이 유용하다고 생각하시면 개발을 지원해 주세요";
-"support.buy_coffee" = "커피 사주기";
-"support.footer" = "귀하의 지원은 이 프로젝트를 계속 유지하고 성장시키는 데 도움이 됩니다";
-"support.also_support" = "다음 방법으로도 지원할 수 있습니다";
-"support.star_github" = "GitHub에서 스타 주기";
 "debug.title" = "디버그 도구";
 "debug.subtitle" = "문제 해결 및 진단을 위한 네트워크 요청 로그";
 "debug.network_logger" = "네트워크 요청 로거";
@@ -1031,8 +1015,6 @@
 "menubar.total" = "합계";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "이 공간은 스폰서에게 제공됩니다";
-"sponsor.slot_cta" = "문의하기";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Codex 계정";
@@ -1097,8 +1079,3 @@
 "launcher.verify" = "로그인 확인";
 "launcher.path_warning" = "~/.local/bin이 PATH에 없습니다. 셸 프로필에 다음 줄을 추가하세요:";
 "launcher.install_failed" = "런처를 설치할 수 없습니다: %@";
-"support.popup_title" = "안녕하세요, Hamed입니다 👋";
-"support.popup_later" = "나중에";
-"support.popup_signature" = "Claude Usage를 혼자 만드는 1인 팀";
-"support.popup_body" = "무료, 오픈소스, 1인 개발 — 광고도 추적도 없습니다. 세션 한도를 태우는 걸 막아준 적이 있다면, 커피 한 잔이 개발을 이어가게 합니다.";
-"support.popup_days" = "%d일째 당신의 한도를 지키는 중 — 언제나 무료";

@@ -86,7 +86,7 @@ class ErrorLogger {
     /// Export error log for support
     func exportLog() -> String {
         return logQueue.sync {
-            var export = "=== Claude Usage Error Log ===\n"
+            var export = "=== Usage Shelf Error Log ===\n"
             export += "Generated: \(Date().formatted())\n"
             export += "Total Errors: \(errorLog.count)\n\n"
 

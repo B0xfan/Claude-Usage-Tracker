@@ -54,7 +54,7 @@ final class TopShelfHost {
         menu.addItem(item("Open Top Shelf", "t", [.command, .option]) { [weak model] in model?.open(.tray) })
         menu.addItem(item("Open Clipboard", "v", [.command, .option]) { [weak model] in model?.open(.clipboard) })
         menu.addItem(.separator())
-        menu.addItem(item("Top Shelf Settings…", "", []) { [weak model] in if let model { SettingsWindow.show(model) } })
+        menu.addItem(item("Usage Shelf Settings…", "", []) { [weak model] in if let model { SettingsWindow.show(model) } })
         return menu
     }
 
