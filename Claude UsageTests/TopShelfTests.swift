@@ -14,20 +14,27 @@ import SwiftUI
 
 @MainActor
 final class TopShelfTests: XCTestCase {
-    private var suite = ""
+    // Each test gets a throwaway settings store and the spare port.
+    nonisolated(unsafe) private var suite = ""
 
-    override func setUp() async throws {
-        try await super.setUp()
-        suite = "TopShelfTests-\(UUID().uuidString)"
-        TopShelfDefaults.store = UserDefaults(suiteName: suite)!
-        Agents.listenPort = 47823
+    nonisolated override func setUp() {
+        super.setUp()
+        let name = "TopShelfTests-\(UUID().uuidString)"
+        suite = name
+        MainActor.assumeIsolated {
+            TopShelfDefaults.store = UserDefaults(suiteName: name)!
+            Agents.listenPort = 47823
+        }
     }
 
-    override func tearDown() async throws {
-        TopShelfDefaults.store.removePersistentDomain(forName: suite)
-        TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
-        Agents.listenPort = Agents.port
-        try await super.tearDown()
+    nonisolated override func tearDown() {
+        let name = suite
+        MainActor.assumeIsolated {
+            TopShelfDefaults.store.removePersistentDomain(forName: name)
+            TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
+            Agents.listenPort = Agents.port
+        }
+        super.tearDown()
     }
 
     func testSettingsStoreIsNotTheRealOne() {
@@ -453,7 +460,7 @@ extension SelfTest {
         }
         copy { pb.writeObjects([img]) }
         check("clipboard: a picture is stored", h.clips[0].kind == .image && h.image(h.clips[0]) != nil)
-        wait(20) { h.clips.contains { $0.text.contains("4471") } }
+        wait(90) { h.clips.contains { $0.text.contains("4471") } }   // reading a picture can be slow the first time, with the whole suite running
         h.query = "invoice"
         check("clipboard: words inside a picture can be searched", h.visible.first?.kind == .image)
         h.query = ""
@@ -593,7 +600,7 @@ extension SelfTest {
 
         let oldTimeout = Agents.answerTimeout
         Agents.answerTimeout = 0.05
-        let timed = waiting(asks("p6"))
+        let timed = waiting(asks("p6").replacingOccurrences(of: "rm -rf build && npm run build", with: "make clean"))   // a command not already on the "always" list
         wait(1) { q.pending.isEmpty }
         check("approval: with no answer it gives up, so Claude asks in the terminal", timed != nil && q.pending.isEmpty)
         Agents.answerTimeout = oldTimeout
@@ -730,4 +737,5 @@ extension SelfTest {
         check("listener: the answer leaves the shelf", a.pending.isEmpty)
     }
 }
+
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Colors and sizes matched to Bartender's Top Shelf (John's reference screenshots in the WiP folder).
 enum Look {
