@@ -37,16 +37,43 @@ final class CombinedRingsIconTests: XCTestCase {
         return p.data[(py * p.width + px) * 4 + 3]
     }
 
-    func testLowValuesAreAPlainTemplateIcon() {
-        let image = renderer.createCombinedRingsIcon(
-            sessionPercentage: 12, weekPercentage: 30,
-            sessionWarning: false, weekWarning: false, isDarkMode: true
-        )
-        XCTAssertTrue(image.isTemplate, "No warning: the icon follows the menu bar color")
-        XCTAssertEqual(image.size, NSSize(width: 24, height: 24))
-        let p = pixels(of: image)
-        for i in stride(from: 0, to: p.data.count, by: 4) {
-            XCTAssertFalse(isOrange(p.data[i], p.data[i + 1], p.data[i + 2], p.data[i + 3]))
+    /// Color at a point given in icon points (24 x 24), measured from the bottom left.
+    private func rgba(_ p: (width: Int, height: Int, data: [UInt8]), x: Double, y: Double) -> (UInt8, UInt8, UInt8, UInt8) {
+        let scale = Double(p.width) / 24
+        let px = Int(x * scale), py = p.height - 1 - Int(y * scale)
+        let i = (py * p.width + px) * 4
+        return (p.data[i], p.data[i + 1], p.data[i + 2], p.data[i + 3])
+    }
+
+    /// systemGreen: green clearly strongest.
+    private func isGreen(_ c: (UInt8, UInt8, UInt8, UInt8)) -> Bool {
+        c.3 > 200 && c.1 > 150 && Int(c.1) > Int(c.0) + 60 && Int(c.1) > Int(c.2) + 40
+    }
+
+    /// systemTeal: little red, strong green and blue.
+    private func isTeal(_ c: (UInt8, UInt8, UInt8, UInt8)) -> Bool {
+        c.3 > 200 && c.0 < 140 && c.1 > 140 && c.2 > 160
+    }
+
+    func testLowValuesAreGreenInsideTealOutside() {
+        for dark in [true, false] {
+            let image = renderer.createCombinedRingsIcon(
+                sessionPercentage: 30, weekPercentage: 30,
+                sessionWarning: false, weekWarning: false, isDarkMode: dark
+            )
+            XCTAssertFalse(image.isTemplate, "Always colored, never a template")
+            XCTAssertEqual(image.size, NSSize(width: 24, height: 24))
+            let p = pixels(of: image)
+            // 30% reaches past 3 o'clock on both rings (rings start at 12 and go clockwise).
+            XCTAssertTrue(isGreen(rgba(p, x: 12 + 5.5, y: 12)), "inner 5-hour ring is green")
+            XCTAssertTrue(isTeal(rgba(p, x: 12 + 10, y: 12)), "outer weekly ring is teal")
+            // Empty track (9 o'clock) is still visible but faint.
+            let track = rgba(p, x: 12 - 10, y: 12)
+            XCTAssertGreaterThan(track.3, 15)
+            XCTAssertLessThan(track.3, 120)
+            for i in stride(from: 0, to: p.data.count, by: 4) {
+                XCTAssertFalse(isOrange(p.data[i], p.data[i + 1], p.data[i + 2], p.data[i + 3]))
+            }
         }
     }
 
@@ -68,15 +95,21 @@ final class CombinedRingsIconTests: XCTestCase {
             sessionPercentage: 92, weekPercentage: 88,
             sessionWarning: true, weekWarning: false, isDarkMode: true
         )
-        XCTAssertFalse(image.isTemplate, "A warning needs real colors, so not a template")
+        XCTAssertFalse(image.isTemplate)
         let p = pixels(of: image)
         var orange = 0
         for i in stride(from: 0, to: p.data.count, by: 4)
             where isOrange(p.data[i], p.data[i + 1], p.data[i + 2], p.data[i + 3]) { orange += 1 }
         XCTAssertGreaterThan(orange, 10, "The 5-hour ring is orange near its limit")
-        // Outer weekly ring at 88% without warning stays white at 3 o'clock.
-        let i = ((p.height / 2) * p.width + Int(22.0 * Double(p.width) / 24)) * 4
-        XCTAssertFalse(isOrange(p.data[i], p.data[i + 1], p.data[i + 2], p.data[i + 3]))
+        XCTAssertTrue(isTeal(rgba(p, x: 12 + 10, y: 12)), "Weekly at 88% with no warning stays teal")
+
+        let both = pixels(of: renderer.createCombinedRingsIcon(
+            sessionPercentage: 95, weekPercentage: 95,
+            sessionWarning: true, weekWarning: true, isDarkMode: false
+        ))
+        let outer = rgba(both, x: 12 + 10, y: 12), inner = rgba(both, x: 12 + 5.5, y: 12)
+        XCTAssertTrue(isOrange(outer.0, outer.1, outer.2, outer.3), "weekly ring orange when critical")
+        XCTAssertTrue(isOrange(inner.0, inner.1, inner.2, inner.3), "5-hour ring orange when critical")
     }
 
     func testBothRingsStyleShowsOneItemForSessionAndWeek() {

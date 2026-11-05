@@ -896,8 +896,9 @@ final class MenuBarIconRenderer {
     }
 
     /// "Both Rings" style: one icon for both numbers. The outer ring is the weekly
-    /// number and the inner ring the 5-hour number. Plain menu bar color (a template
-    /// image) unless a number is near its limit; then that ring turns orange.
+    /// number (teal) and the inner ring the 5-hour number (green), using the app's own
+    /// system colors. A ring turns orange when its number reaches the critical level.
+    /// Always colored, never a template; the empty track is the menu bar color at 15%.
     func createCombinedRingsIcon(
         sessionPercentage: Double,
         weekPercentage: Double,
@@ -915,10 +916,10 @@ final class MenuBarIconRenderer {
             profileInitial: "",
             monochromeMode: true,
             isDarkMode: isDarkMode,
-            sessionColorOverride: weekWarning ? .systemOrange : nil,
-            weekColorOverride: sessionWarning ? .systemOrange : nil
+            sessionColorOverride: weekWarning ? NSColor.systemOrange : NSColor.systemTeal,
+            weekColorOverride: sessionWarning ? NSColor.systemOrange : NSColor.systemGreen
         )
-        image.isTemplate = !(sessionWarning || weekWarning)
+        image.isTemplate = false
         return image
     }
 
