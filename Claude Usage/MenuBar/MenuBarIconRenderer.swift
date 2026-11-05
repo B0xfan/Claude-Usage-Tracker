@@ -89,8 +89,8 @@ final class MenuBarIconRenderer {
             return createCombinedRingsIcon(
                 sessionPercentage: session.percentage,
                 weekPercentage: week.percentage,
-                sessionWarning: session.statusLevel == .critical,
-                weekWarning: week.statusLevel == .critical,
+                sessionLevel: session.statusLevel,
+                weekLevel: week.statusLevel,
                 isDarkMode: isDarkMode
             )
         case .battery:
@@ -897,15 +897,19 @@ final class MenuBarIconRenderer {
 
     /// "Both Rings" style: one icon for both numbers. The outer ring is the weekly
     /// number (teal) and the inner ring the 5-hour number (green), using the app's own
-    /// system colors. A ring turns orange when its number reaches the critical level.
+    /// system colors. Like the old ring arcs, a ring turns orange at the moderate level
+    /// and red at the critical level (UsageStatusCalculator, incl. pace and remaining modes).
     /// Always colored, never a template; the empty track is the menu bar color at 15%.
     func createCombinedRingsIcon(
         sessionPercentage: Double,
         weekPercentage: Double,
-        sessionWarning: Bool,
-        weekWarning: Bool,
+        sessionLevel: UsageStatusLevel,
+        weekLevel: UsageStatusLevel,
         isDarkMode: Bool
     ) -> NSImage {
+        func color(_ level: UsageStatusLevel, normal: NSColor) -> NSColor {
+            level == .safe ? normal : getColorForStatusLevel(level)  // .systemOrange / .systemRed
+        }
         // createConcentricIcon draws its "session" values on the outer ring,
         // so the weekly number goes in that slot and the 5-hour number inside.
         let image = createConcentricIcon(
@@ -916,8 +920,8 @@ final class MenuBarIconRenderer {
             profileInitial: "",
             monochromeMode: true,
             isDarkMode: isDarkMode,
-            sessionColorOverride: weekWarning ? NSColor.systemOrange : NSColor.systemTeal,
-            weekColorOverride: sessionWarning ? NSColor.systemOrange : NSColor.systemGreen
+            sessionColorOverride: color(weekLevel, normal: .systemTeal),
+            weekColorOverride: color(sessionLevel, normal: .systemGreen)
         )
         image.isTemplate = false
         return image
