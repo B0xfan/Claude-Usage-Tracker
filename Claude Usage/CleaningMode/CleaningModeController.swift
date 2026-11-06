@@ -201,7 +201,7 @@ final class CleaningModeController: ObservableObject {
 
     @discardableResult
     func start(now: TimeInterval) -> CleaningStartResult {
-        guard !isActive else { stop(reason: .manual) }
+        if isActive { stop(reason: .manual) }
         refreshPermissions()
         guard permissionState == .ready else {
             shouldOpenSettings = true
