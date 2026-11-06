@@ -24,7 +24,7 @@ final class TopShelfHost {
     private(set) var model: ShelfModel?
     private var controller: ShelfController?
     private var statusItem: NSStatusItem?
-    private var hotKeys: [HotKey] = []
+    var hotKeys: [HotKey] = []
 
     /// True while the unit tests run inside the app: Top Shelf then stays off (no listener, no notch window).
     static var isRunningTests: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
@@ -82,15 +82,20 @@ final class MenuAction: NSMenuItem {
 final class HotKey {
     static let signature: OSType = 0x5453_4846
     nonisolated(unsafe) private static var actions: [UInt32: () -> Void] = [:]
-    private var ref: EventHotKeyRef?
+    fileprivate var ref: EventHotKeyRef?
+    private var ownID: UInt32 = 0
 
     init(keyCode: Int, modifiers: Int, action: @escaping () -> Void) {
         if Self.actions.isEmpty { Self.installHandler() }
         let id = UInt32(Self.actions.count + 1)
         Self.actions[id] = action
+        ownID = id
         RegisterEventHotKey(UInt32(keyCode), UInt32(modifiers), EventHotKeyID(signature: Self.signature, id: id),
                             GetApplicationEventTarget(), 0, &ref)
+        Self.activeIDs.insert(id)
     }
+
+    nonisolated(unsafe) private static var activeIDs: Set<UInt32> = []
 
     private static func installHandler() {
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -99,7 +104,7 @@ final class HotKey {
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &id)
             guard id.signature == 0x5453_4846, let action = HotKey.actions[id.id] else { return OSStatus(eventNotHandledErr) }
-            action()
+            if HotKey.activeIDs.contains(id.id) { action() }
             return noErr
         }, 1, &spec, nil, nil)
     }

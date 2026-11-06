@@ -14,6 +14,8 @@ struct ShortcutsSettingsView: View {
     @State private var keepAwakeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.keepAwake]
     @State private var keepAwakeWarning: String?
     @State private var nextProfileCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.nextProfile]
+    @State private var cleaningModeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.cleaningMode]
+    @State private var cleaningModeWarning: String?
 
     var body: some View {
         ScrollView {
@@ -78,6 +80,19 @@ struct ShortcutsSettingsView: View {
                             if let keepAwakeWarning {
                                 ShortcutWarningView(message: keepAwakeWarning)
                             }
+                        }
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                            shortcutRow(
+                                icon: "sparkles",
+                                title: "Start Cleaning Mode",
+                                description: "Start with your saved cleaning choices. No shortcut is set by default.",
+                                combo: $cleaningModeCombo,
+                                action: .cleaningMode,
+                                warning: $cleaningModeWarning
+                            )
+                            if let cleaningModeWarning { ShortcutWarningView(message: cleaningModeWarning) }
+                            Text("The shortcut never replaces the timer or the 3-second mouse or trackpad hold.")
+                                .font(DesignTokens.Typography.caption).foregroundColor(.secondary)
                         }
                     }
                 }

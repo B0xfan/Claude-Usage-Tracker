@@ -234,6 +234,11 @@ struct TrafficLightButton: View {
 }
 
 /// Professional, native macOS Settings interface with multi-profile support
+extension Notification.Name {
+    static let showCleaningModeSettings = Notification.Name("showCleaningModeSettings")
+    static let selectSettingsSection = Notification.Name("selectSettingsSection")
+}
+
 struct SettingsView: View {
     @State private var selectedSection: SettingsSection = .appearance
     @StateObject private var profileManager = ProfileManager.shared
@@ -316,6 +321,8 @@ struct SettingsView: View {
                     PopoverSettingsView()
                 case .keepAwake:
                     KeepAwakeSettingsView()
+                case .cleaningMode:
+                    CleaningModeSettingsView()
                 case .debug:
                     DebugNetworkLogView()
                 case .about:
@@ -331,6 +338,12 @@ struct SettingsView: View {
         }
         .frame(minWidth: 720, maxWidth: 720, maxHeight: .infinity)
         .background(SettingsBackground())
+        .onReceive(NotificationCenter.default.publisher(for: .selectSettingsSection)) { notification in
+            if let section = notification.object as? SettingsSection { selectedSection = section }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showCleaningModeSettings)) { _ in
+            selectedSection = .cleaningMode
+        }
     }
 }
 
@@ -573,6 +586,7 @@ enum SettingsSection: String, CaseIterable {
     case shortcuts
     case popover
     case keepAwake
+    case cleaningMode
     case debug
     case about
 
@@ -593,6 +607,7 @@ enum SettingsSection: String, CaseIterable {
         case .shortcuts: return "section.shortcuts_title".localized
         case .popover: return "section.popover_title".localized
         case .keepAwake: return "Keep Awake"
+        case .cleaningMode: return "Cleaning Mode"
         case .debug: return "section.debug_title".localized
         case .about: return "settings.about".localized
         }
@@ -615,6 +630,7 @@ enum SettingsSection: String, CaseIterable {
         case .shortcuts: return "keyboard"
         case .popover: return "rectangle.topthird.inset.filled"
         case .keepAwake: return "sun.max.fill"
+        case .cleaningMode: return "sparkles"
         case .debug: return "ladybug.fill"
         case .about: return "info.circle.fill"
         }
@@ -637,6 +653,7 @@ enum SettingsSection: String, CaseIterable {
         case .shortcuts: return "section.shortcuts_desc".localized
         case .popover: return "section.popover_desc".localized
         case .keepAwake: return "Stop your Mac from sleeping when you need it awake"
+        case .cleaningMode: return "Clean your keyboard and screen without accidental input"
         case .debug: return "section.debug_desc".localized
         case .about: return "settings.about.description".localized
         }

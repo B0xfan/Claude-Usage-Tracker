@@ -29,7 +29,7 @@ final class KeepAwakeTests: XCTestCase {
         MainActor.assumeIsolated {
             controller.stop()
             controller = nil
-            UserDefaults.standard.removePersistentDomain(forName: name)
+            UserDefaults(suiteName: name)?.removePersistentDomain(forName: name)
         }
         super.tearDown()
     }

@@ -71,6 +71,7 @@ class SharedDataStore {
         static let shortcutOpenSettings = "shortcutOpenSettings"
         static let shortcutNextProfile = "shortcutNextProfile"
         static let shortcutKeepAwake = "shortcutKeepAwake"
+        static let shortcutCleaningMode = "shortcutCleaningMode"
 
         // Auto-Switch Profile
         static let autoSwitchProfileEnabled = "autoSwitchProfileEnabled"
@@ -596,6 +597,7 @@ class SharedDataStore {
         case .openSettings: return Keys.shortcutOpenSettings
         case .nextProfile: return Keys.shortcutNextProfile
         case .keepAwake: return Keys.shortcutKeepAwake
+        case .cleaningMode: return Keys.shortcutCleaningMode
         }
     }
 

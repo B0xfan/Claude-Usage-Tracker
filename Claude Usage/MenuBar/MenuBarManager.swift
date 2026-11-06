@@ -72,6 +72,8 @@ class MenuBarManager: NSObject, ObservableObject {
     private let profileManager = ProfileManager.shared
     private let autoStartService = AutoStartSessionService.shared
     let keepAwake = KeepAwakeController.shared
+    let cleaningMode = CleaningModeController.shared
+    private var cleaningSettingsObserver: NSObjectProtocol?
 
     // Combine cancellables for profile observation
     private var cancellables = Set<AnyCancellable>()
@@ -261,11 +263,25 @@ class MenuBarManager: NSObject, ObservableObject {
         shortcutManager.onToggleKeepAwake = { [weak self] in
             self?.keepAwake.toggle()
         }
+        shortcutManager.onStartCleaningMode = { [weak self] in
+            self?.startCleaningMode()
+        }
         shortcutManager.startListening()
+        cleaningMode.startListening()
+        registerCleaningSettingsObserver()
+        cleaningMode.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, self.cleaningMode.shouldOpenSettings else { return }
+                self.presentCleaningSettings()
+            }
+        .store(in: &cancellables)
     }
 
     func cleanup() {
         ShortcutManager.shared.stopListening()
+        cleaningMode.cleanup()
+        if let cleaningSettingsObserver { NotificationCenter.default.removeObserver(cleaningSettingsObserver) }
         keepAwake.cleanup()
         refreshTimer?.invalidate()
         refreshTimer = nil
@@ -647,6 +663,13 @@ class MenuBarManager: NSObject, ObservableObject {
 
         menu.addItem(NSMenuItem.separator())
 
+        let cleaningItem = NSMenuItem(title: cleaningMode.isActive ? "Cleaning Mode is on" : "Start Cleaning Mode", action: #selector(startCleaningMode), keyEquivalent: "")
+        cleaningItem.target = self
+        cleaningItem.isEnabled = !cleaningMode.isActive
+        menu.addItem(cleaningItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let settingsItem = NSMenuItem(title: "common.settings".localized, action: #selector(preferencesClicked), keyEquivalent: ",")
         settingsItem.keyEquivalentModifierMask = .command
         settingsItem.target = self
@@ -670,6 +693,40 @@ class MenuBarManager: NSObject, ObservableObject {
 
     @objc private func toggleKeepAwake() {
         keepAwake.toggle()
+    }
+
+    @objc private func startCleaningMode() {
+        // Defer capture until AppKit has delivered the initiating mouse release.
+        let result = cleaningMode.start(now: -1)
+        if result != .started || cleaningMode.shouldOpenSettings { presentCleaningSettings() }
+    }
+
+    private func presentCleaningSettings() {
+        cleaningMode.shouldOpenSettings = false
+        closePopoverOrWindow()
+        NSApp.setActivationPolicy(.regular)
+        let window: NSWindow
+        if let existing = settingsWindow {
+            window = existing
+        } else {
+            let created = SettingsWindowBuilder.makeWindow(size: Constants.WindowSizes.settingsWindow)
+            created.title = "Usage Shelf Settings"
+            created.center()
+            created.isReleasedWhenClosed = false
+            created.delegate = self
+            settingsWindow = created
+            window = created
+        }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        NotificationCenter.default.post(name: .selectSettingsSection, object: SettingsSection.cleaningMode)
+    }
+
+    private func registerCleaningSettingsObserver() {
+        guard cleaningSettingsObserver == nil else { return }
+        cleaningSettingsObserver = NotificationCenter.default.addObserver(forName: .showCleaningModeSettings, object: nil, queue: .main) { [weak self] _ in
+            self?.presentCleaningSettings()
+        }
     }
 
     @objc private func contextMenuRefresh() {
@@ -1664,6 +1721,7 @@ class MenuBarManager: NSObject, ObservableObject {
     }
 
     @objc private func quitClicked() {
+        cleaningMode.cleanup()
         NSApplication.shared.terminate(nil)
     }
 }

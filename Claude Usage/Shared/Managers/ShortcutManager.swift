@@ -40,6 +40,7 @@ enum ShortcutAction: String, CaseIterable {
     case openSettings
     case nextProfile
     case keepAwake
+    case cleaningMode
 
     var displayName: String {
         switch self {
@@ -48,6 +49,7 @@ enum ShortcutAction: String, CaseIterable {
         case .openSettings: return "Open Settings"
         case .nextProfile: return "Next profile"
         case .keepAwake: return "Keep awake"
+        case .cleaningMode: return "Start Cleaning Mode"
         }
     }
 }
@@ -196,6 +198,7 @@ class ShortcutManager {
     var onOpenSettings: (() -> Void)?
     var onNextProfile: (() -> Void)?
     var onToggleKeepAwake: (() -> Void)?
+    var onStartCleaningMode: (() -> Void)?
 
     private convenience init() {
         self.init(store: SharedDataStore.shared)
@@ -281,7 +284,7 @@ class ShortcutManager {
         let id = EventHotKeyID(signature: Self.hotKeySignature, id: nextHotKeyID)
         let (status, ref) = registrar(combo, action, id)
         guard status == noErr, let ref else {
-            if action == .keepAwake { shortcuts.removeValue(forKey: action) }
+            if action == .keepAwake || action == .cleaningMode { shortcuts.removeValue(forKey: action) }
             LoggingService.shared.log("ShortcutManager: Failed to register hotkey \(combo.displayString), status=\(status)")
             return
         }
@@ -305,6 +308,7 @@ class ShortcutManager {
         case .openSettings: onOpenSettings?()
         case .nextProfile: onNextProfile?()
         case .keepAwake: onToggleKeepAwake?()
+        case .cleaningMode: onStartCleaningMode?()
         }
     }
 }
