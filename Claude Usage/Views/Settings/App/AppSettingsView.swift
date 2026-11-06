@@ -43,27 +43,30 @@ struct AppSettingsContent: View {
     let onFixedSpacesChange: (Bool) -> Void
 
     var body: some View {
-        SettingsPageHeader(
-            title: "section.app_settings_title".localized,
-            subtitle: "section.app_settings_desc".localized
-        )
-        SettingsSectionCard(title: launchAtLoginTitle, subtitle: launchAtLoginDescription) {
-            SettingToggle(
-                title: launchAtLoginTitle,
-                description: launchAtLoginDescription,
-                isOn: $launchAtLogin
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
+            SettingsPageHeader(
+                title: "section.app_settings_title".localized,
+                subtitle: "section.app_settings_desc".localized
             )
+            SettingsSectionCard(title: launchAtLoginTitle, subtitle: launchAtLoginDescription) {
+                SettingToggle(
+                    title: launchAtLoginTitle,
+                    description: launchAtLoginDescription,
+                    isOn: $launchAtLogin
+                )
+            }
+            SettingsSectionCard(
+                title: "Desktop Spaces",
+                subtitle: "Control whether macOS keeps your Spaces where you put them"
+            ) {
+                SettingToggle(
+                    title: "Keep Spaces in a fixed order",
+                    description: "Stops macOS from rearranging your Spaces by recent use. The screen flickers briefly when this changes.",
+                    isOn: Binding(get: { fixedSpaces }, set: onFixedSpacesChange)
+                )
+            }
         }
-        SettingsSectionCard(
-            title: "Desktop Spaces",
-            subtitle: "Control whether macOS keeps your Spaces where you put them"
-        ) {
-            SettingToggle(
-                title: "Keep Spaces in a fixed order",
-                description: "Stops macOS from rearranging your Spaces by recent use. The screen flickers briefly when this changes.",
-                isOn: Binding(get: { fixedSpaces }, set: onFixedSpacesChange)
-            )
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -163,6 +163,14 @@ final class FixedSpacesTests: XCTestCase {
         XCTAssertFalse(source.contains("\"Keep Spaces in a fixed order\".localized"))
     }
 
+    func testPageHasExplicitVerticalStack() throws {
+        let file = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Claude Usage/Views/Settings/App/AppSettingsView.swift")
+        let source = try String(contentsOf: file)
+        XCTAssertTrue(source.contains("var body: some View {\n        VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {\n            SettingsPageHeader"))
+    }
+
     func testToggleBindingUsesInjectedController() {
         var submitted: [Bool] = []
         let content = AppSettingsContent(
