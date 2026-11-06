@@ -356,6 +356,58 @@ enum KeepAwakePreviewRenderer {
         }
     }
 
+    static func renderFixedSpaces(controller: FixedSpacesController, scheme: ColorScheme, to url: URL) throws {
+        let content = HStack(spacing: 0) {
+            AppSettingsSection(selectedSection: .constant(.appSettings))
+                .padding(12)
+                .frame(width: 190, alignment: .topLeading)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .background(PreviewSidebarMaterial())
+            AppSettingsContent(
+                launchAtLoginTitle: "Launch at login",
+                launchAtLoginDescription: "Automatically start Usage Shelf when you log in to your Mac",
+                launchAtLogin: .constant(false),
+                fixedSpaces: controller.keepFixed,
+                onFixedSpacesChange: { _ in }
+            )
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(scheme == .dark ? Color.black.opacity(0.15) : Color.white.opacity(0.3))
+        }
+        .frame(width: 720, height: 520)
+        .background(PreviewSettingsMaterial())
+        let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)!
+        let hosting = NSHostingView(rootView: content.environment(\.colorScheme, scheme))
+        hosting.appearance = appearance
+        hosting.frame = NSRect(origin: .zero, size: CGSize(width: 720, height: 520))
+        let container = NSView(frame: hosting.frame)
+        container.appearance = appearance
+        container.wantsLayer = true
+        container.layer?.backgroundColor = (scheme == .dark ? NSColor(white: 0.12, alpha: 1) : NSColor(white: 0.94, alpha: 1)).cgColor
+        container.addSubview(hosting)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        hosting.layoutSubtreeIfNeeded()
+        // Detached NSSwitch rendering can retain the prior state. The fake controller
+        // supplies the desired state directly; no binding, real preference or Dock is used.
+        setPreviewSwitches(in: hosting, fixed: controller.keepFixed)
+        hosting.layoutSubtreeIfNeeded()
+        try capture(container, to: url)
+    }
+
+    private static func setPreviewSwitches(in view: NSView, fixed: Bool) {
+        for (index, toggle) in switches(in: view).enumerated() {
+            toggle.isEnabled = true
+            toggle.isHighlighted = false
+            toggle.state = index == switches(in: view).count - 1 && fixed ? .on : .off
+            toggle.needsDisplay = true
+        }
+    }
+
+    private static func switches(in view: NSView) -> [NSSwitch] {
+        if let toggle = view as? NSSwitch { return [toggle] }
+        return view.subviews.flatMap(switches(in:))
+    }
+
     private static func capture(_ view: NSView, to url: URL) throws {
         view.layoutSubtreeIfNeeded()
         guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
