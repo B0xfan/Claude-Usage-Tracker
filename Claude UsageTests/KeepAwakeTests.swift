@@ -281,7 +281,7 @@ final class KeepAwakeTests: XCTestCase {
         )
         let accessory = controller.menuBarAccessoryImage(isDarkMode: true)
         let combined = renderer.appendingKeepAwakeAccessory(accessory, to: rings)
-        XCTAssertEqual(combined.size.width, rings.size.width + 2 + accessory.size.width, accuracy: 0.01)
+        XCTAssertEqual(combined.size.width, rings.size.width + 4 + accessory.size.width, accuracy: 0.01)
         XCTAssertEqual(combined.size.height, max(rings.size.height, accessory.size.height), accuracy: 0.01)
 
         let bitmap = try XCTUnwrap(NSBitmapImageRep(data: combined.tiffRepresentation ?? Data()))
@@ -297,7 +297,7 @@ final class KeepAwakeTests: XCTestCase {
             }
         }
         let markLeft = CGFloat(try XCTUnwrap(markPixels.min()))
-        let expectedLeft = rings.size.width + 2
+        let expectedLeft = rings.size.width + 4
         XCTAssertGreaterThanOrEqual(markLeft, expectedLeft, "The mark must be to the right of all ring pixels")
         XCTAssertLessThanOrEqual(markLeft, expectedLeft + 4, "The gap must stay tight")
     }
@@ -308,11 +308,29 @@ final class KeepAwakeTests: XCTestCase {
         let activeAccessory = controller.menuBarAccessoryImage(isDarkMode: false)
         let otherIcon = renderer.createCompactDot(percentage: 50, status: .safe, profileInitial: "W", monochromeMode: false, isDarkMode: false)
         let combined = renderer.appendingKeepAwakeAccessory(activeAccessory, to: otherIcon)
-        XCTAssertEqual(combined.size.width, otherIcon.size.width + 2 + activeAccessory.size.width, accuracy: 0.01)
+        XCTAssertEqual(combined.size.width, otherIcon.size.width + 4 + activeAccessory.size.width, accuracy: 0.01)
         let firstProfile = renderer.appendingKeepAwakeAccessory(activeAccessory, to: otherIcon)
         let secondProfile = renderer.appendingKeepAwakeAccessory(nil, to: otherIcon)
         XCTAssertGreaterThan(firstProfile.size.width, secondProfile.size.width)
         XCTAssertTrue(secondProfile === otherIcon)
+    }
+
+    func testKeepAwakeHaloHasClearSpaceAroundFullCircle() throws {
+        controller.start(duration: .untilOff, now: 0)
+        for dark in [false, true] {
+            let image = controller.menuBarAccessoryImage(isDarkMode: dark)
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(data: image.tiffRepresentation ?? Data()))
+            var firstInk = bitmap.pixelsWide
+            var lastInk = -1
+            for y in 0..<bitmap.pixelsHigh {
+                for x in 0..<bitmap.pixelsWide where (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.05 {
+                    firstInk = min(firstInk, x)
+                    lastInk = max(lastInk, x)
+                }
+            }
+            XCTAssertGreaterThan(firstInk, 0, "The halo must not touch the left image edge")
+            XCTAssertLessThan(lastInk, bitmap.pixelsWide - 1, "The halo must not be clipped by the text at the right image edge")
+        }
     }
 
     func testMenuBarPausedStateUsesReadableText() {
@@ -333,7 +351,7 @@ final class KeepAwakeTests: XCTestCase {
             let name = scheme == .light ? "light" : "dark"
             for active in [false, true] {
                 let state = active ? "on" : "off"
-                try KeepAwakePreviewRenderer.renderMenuBarV2(controller: controller, active: active, scheme: scheme, to: folder.appendingPathComponent("menu-bar-\(state)-\(name)-v2.png"))
+                try KeepAwakePreviewRenderer.renderMenuBarV3(controller: controller, active: active, scheme: scheme, to: folder.appendingPathComponent("menu-bar-\(state)-\(name)-v3.png"))
             }
         }
     }
@@ -357,7 +375,7 @@ final class KeepAwakeTests: XCTestCase {
             try KeepAwakePreviewRenderer.renderSettings(controller: controller, scheme: scheme, to: folder.appendingPathComponent("settings-\(name).png"))
             try KeepAwakePreviewRenderer.renderContextMenu(controller: controller, scheme: scheme, to: folder.appendingPathComponent("menu-\(name).png"))
             let menuBarURL = folder.appendingPathComponent("menu-bar-\(name).png")
-            try KeepAwakePreviewRenderer.renderMenuBarV2(controller: controller, active: true, scheme: scheme, to: menuBarURL)
+            try KeepAwakePreviewRenderer.renderMenuBarV3(controller: controller, active: true, scheme: scheme, to: menuBarURL)
             controller.stop()
         }
     }

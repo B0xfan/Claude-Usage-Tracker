@@ -258,7 +258,7 @@ enum KeepAwakePreviewRenderer {
         .padding(.horizontal, 14).padding(.vertical, 5)
     }
 
-    static func renderMenuBarV2(controller: KeepAwakeController, active: Bool, scheme: ColorScheme, to url: URL) throws {
+    static func renderMenuBarV3(controller: KeepAwakeController, active: Bool, scheme: ColorScheme, to url: URL) throws {
         let isDark = scheme == .dark
         let renderer = MenuBarIconRenderer()
         let rings = renderer.createCombinedRingsIcon(sessionPercentage: 25, weekPercentage: 50, sessionLevel: .safe, weekLevel: .safe, isDarkMode: isDark)

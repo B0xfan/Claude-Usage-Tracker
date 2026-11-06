@@ -749,7 +749,7 @@ final class MenuBarIconRenderer {
     /// Returning the original image while off preserves its exact width and template behavior.
     func appendingKeepAwakeAccessory(_ accessory: NSImage?, to icon: NSImage) -> NSImage {
         guard let accessory else { return icon }
-        let spacing: CGFloat = 2
+        let spacing: CGFloat = 4
         let width = icon.size.width + spacing + accessory.size.width
         let height = max(icon.size.height, accessory.size.height)
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
