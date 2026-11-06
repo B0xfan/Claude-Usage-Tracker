@@ -745,6 +745,22 @@ final class MenuBarIconRenderer {
         return image
     }
 
+    /// Adds Keep awake inside an existing status item so it cannot drift to a separate position.
+    /// Returning the original image while off preserves its exact width and template behavior.
+    func appendingKeepAwakeAccessory(_ accessory: NSImage?, to icon: NSImage) -> NSImage {
+        guard let accessory else { return icon }
+        let spacing: CGFloat = 2
+        let width = icon.size.width + spacing + accessory.size.width
+        let height = max(icon.size.height, accessory.size.height)
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
+            icon.draw(at: NSPoint(x: 0, y: (height - icon.size.height) / 2), from: .zero, operation: .sourceOver, fraction: 1)
+            accessory.draw(at: NSPoint(x: icon.size.width + spacing, y: (height - accessory.size.height) / 2), from: .zero, operation: .sourceOver, fraction: 1)
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
+
     // MARK: - Multi-Profile Concentric Icon
 
     /// Creates a compact concentric circle icon for multi-profile display mode

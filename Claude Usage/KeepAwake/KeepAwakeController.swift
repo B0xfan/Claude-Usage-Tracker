@@ -412,13 +412,13 @@ final class KeepAwakeController: ObservableObject {
 
     func menuBarAccessoryImage(isDarkMode: Bool) -> NSImage {
         let showTime = settings.showTime
-        let text = showTime ? menuBarTime(at: currentTime) : ""
+        let text = isPaused ? "Paused" : (showTime ? menuBarTime(at: currentTime) : "")
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
             .foregroundColor: isDarkMode ? NSColor.white : NSColor.black
         ]
         let textSize = (text as NSString).size(withAttributes: attributes)
-        let size = NSSize(width: 12 + (showTime ? textSize.width + 3 : 0), height: 18)
+        let size = NSSize(width: 12 + (!text.isEmpty ? textSize.width + 3 : 0), height: 18)
         return NSImage(size: size, flipped: false) { rect in
             let color = self.settings.markColor.nsColor
             color.setFill()
@@ -427,7 +427,7 @@ final class KeepAwakeController: ObservableObject {
             let ring = NSBezierPath(ovalIn: NSRect(x: -1, y: 3, width: 12, height: 12))
             ring.lineWidth = 2
             ring.stroke()
-            if showTime { (text as NSString).draw(at: NSPoint(x: 12, y: (18 - textSize.height) / 2), withAttributes: attributes) }
+            if !text.isEmpty { (text as NSString).draw(at: NSPoint(x: 12, y: (18 - textSize.height) / 2), withAttributes: attributes) }
             return true
         }
     }

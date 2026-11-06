@@ -15,7 +15,6 @@ final class StatusBarUIManager {
 
     // Dictionary to hold status items keyed by profile ID (multi-profile mode)
     private var multiProfileStatusItems: [UUID: NSStatusItem] = [:]
-    private var keepAwakeStatusItem: NSStatusItem?
 
 
     // Current display mode
@@ -49,7 +48,6 @@ final class StatusBarUIManager {
     }
     /// Returns a stable autosaveName for the default logo (no credentials)
     private static let defaultLogoAutosaveName: NSStatusItem.AutosaveName = "\(autosavePrefix).defaultLogo"
-    private static let keepAwakeAutosaveName: NSStatusItem.AutosaveName = "\(autosavePrefix).keepAwake"
 
     /// Fixed placeholder length for freshly-created multi-profile status items. Creating
     /// them at a concrete length (rather than .variableLength) avoids the macOS 26 (Tahoe)
@@ -66,29 +64,20 @@ final class StatusBarUIManager {
 
     init() {}
 
-    private func setupKeepAwakeItem(target: AnyObject, action: Selector) {
-        guard keepAwakeStatusItem == nil else { return }
-        let item = NSStatusBar.system.statusItem(withLength: 64)
-        item.autosaveName = Self.keepAwakeAutosaveName
-        item.isVisible = false
-        item.button?.target = target
-        item.button?.action = action
-        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        item.button?.imagePosition = .imageOnly
-        keepAwakeStatusItem = item
+    private var keepAwakeController: KeepAwakeController?
+    private var menuBarIsDark = false
+    private var keepAwakeImage: NSImage? {
+        guard keepAwakeController?.isActive == true else { return nil }
+        return keepAwakeController?.menuBarAccessoryImage(isDarkMode: menuBarIsDark)
     }
-
-    func updateKeepAwakeAccessory(controller: KeepAwakeController) {
-        guard let item = keepAwakeStatusItem, let button = item.button else { return }
-        let visible = controller.isActive
-        if item.isVisible != visible { item.isVisible = visible }
-        guard visible else {
-            setButtonImage(button, image: NSImage(size: NSSize(width: 1, height: 1)))
-            return
-        }
-        button.toolTip = controller.isPaused ? "Keep awake paused while locked" : "Keep awake: \(controller.popupTime(at: Date().timeIntervalSinceReferenceDate))"
-        let isDark = button.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        setButtonImage(button, image: controller.menuBarAccessoryImage(isDarkMode: isDark))
+    private func keepAwakeToolTip() -> String? {
+        guard let controller = keepAwakeController, controller.isActive else { return nil }
+        return controller.isPaused ? "Keep awake paused while locked" : "Keep awake: \(controller.popupTime(at: Date().timeIntervalSinceReferenceDate))"
+    }
+    private func updateKeepAwakeAppearance(for button: NSStatusBarButton, isDark: Bool) {
+        keepAwakeController = KeepAwakeController.shared
+        menuBarIsDark = isDark
+        button.toolTip = keepAwakeToolTip()
     }
 
     // MARK: - Setup
@@ -97,7 +86,6 @@ final class StatusBarUIManager {
     func setup(target: AnyObject, action: Selector, config: MenuBarIconConfiguration) {
         // Remove all existing items first
         cleanup()
-        setupKeepAwakeItem(target: target, action: action)
 
         // Check if there are any enabled metrics
         if config.enabledMetrics.isEmpty {
@@ -205,10 +193,6 @@ final class StatusBarUIManager {
     }
 
     func cleanup() {
-        if let item = keepAwakeStatusItem {
-            NSStatusBar.system.removeStatusItem(item)
-            keepAwakeStatusItem = nil
-        }
         appearanceObservers.forEach { $0.invalidate() }
         appearanceObservers.removeAll()
 
@@ -382,7 +366,6 @@ final class StatusBarUIManager {
 
     /// Updates all multi-profile status items
     func updateMultiProfileButtons(profiles: [Profile], config: MultiProfileDisplayConfig, activeProfileId: UUID? = nil) {
-        updateKeepAwakeAccessory(controller: KeepAwakeController.shared)
         guard isMultiProfileMode else { return }
 
         for profile in profiles where profile.isSelectedForDisplay {
@@ -534,14 +517,16 @@ final class StatusBarUIManager {
                 )
             }
 
+            updateKeepAwakeAppearance(for: button, isDark: menuBarIsDark)
+            let keepAwake = profile.id == activeProfileId ? keepAwakeImage : nil
             let finalImage: NSImage
             if profile.id == activeProfileId && config.showActiveProfileIndicator {
                 let underlinedImage = addGreenUnderline(to: image)
                 underlinedImage.isTemplate = false
-                finalImage = underlinedImage
+                finalImage = renderer.appendingKeepAwakeAccessory(keepAwake, to: underlinedImage)
             } else {
                 image.isTemplate = useMonochrome && !config.showPaceMarker
-                finalImage = image
+                finalImage = renderer.appendingKeepAwakeAccessory(keepAwake, to: image)
             }
 
             // macOS 26 (Tahoe) crash fix: with NSStatusItem.variableLength, AppKit
@@ -610,7 +595,6 @@ final class StatusBarUIManager {
         usage: ClaudeUsage,
         apiUsage: APIUsage?
     ) {
-        updateKeepAwakeAccessory(controller: KeepAwakeController.shared)
         // Get config from active profile
         let profile = ProfileManager.shared.activeProfile
         let config = profile?.iconConfig ?? .default
@@ -656,10 +640,12 @@ final class StatusBarUIManager {
                 showNextSessionTime: metricConfig.showNextSessionTime
             )
 
-            if metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
-                image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+            updateKeepAwakeAppearance(for: button, isDark: menuBarIsDark)
+            let finalImage = renderer.appendingKeepAwakeAccessory(keepAwakeImage, to: image)
+            if keepAwakeImage == nil, metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
+                finalImage.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
             }
-            button.image = image
+            button.image = finalImage
         }
     }
 
@@ -697,10 +683,12 @@ final class StatusBarUIManager {
             showNextSessionTime: metricConfig.showNextSessionTime
         )
 
-        if metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
-            image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+        updateKeepAwakeAppearance(for: button, isDark: menuBarIsDark)
+        let finalImage = renderer.appendingKeepAwakeAccessory(keepAwakeImage, to: image)
+        if keepAwakeImage == nil, metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
+            finalImage.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
         }
-        button.image = image
+        button.image = finalImage
     }
 
     /// Mirrors the auth fallback used for actual usage fetches so UI gating does

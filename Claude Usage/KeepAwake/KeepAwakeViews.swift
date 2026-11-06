@@ -258,21 +258,24 @@ enum KeepAwakePreviewRenderer {
         .padding(.horizontal, 14).padding(.vertical, 5)
     }
 
-    static func renderMenuBar(controller: KeepAwakeController, scheme: ColorScheme, to url: URL) throws {
-        let view = HStack(spacing: 5) {
-            ZStack {
-                Circle().stroke(Color.teal, lineWidth: 2).frame(width: 18, height: 18)
-                Circle().stroke(Color.green, lineWidth: 2).frame(width: 9, height: 9)
-            }
-            Circle().fill(Color(nsColor: controller.settings.markColor.nsColor)).frame(width: 8, height: 8)
-                .overlay(Circle().stroke(Color(nsColor: controller.settings.markColor.nsColor).opacity(0.25), lineWidth: 2).padding(-2))
-            if controller.settings.showTime {
-                Text(controller.menuBarTime(at: 1080)).font(.system(size: 11, weight: .semibold).monospacedDigit())
-            }
-        }
-        .padding(.horizontal, 6).frame(height: 24)
-        .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(scheme == .dark ? 0.25 : 0.08)))
-        try render(view, scheme: scheme, size: nil, to: url)
+    static func renderMenuBarV2(controller: KeepAwakeController, active: Bool, scheme: ColorScheme, to url: URL) throws {
+        let isDark = scheme == .dark
+        let renderer = MenuBarIconRenderer()
+        let rings = renderer.createCombinedRingsIcon(sessionPercentage: 25, weekPercentage: 50, sessionLevel: .safe, weekLevel: .safe, isDarkMode: isDark)
+        if active { controller.start(duration: .untilOff, now: 0) } else { controller.stop() }
+        let accessory = active ? controller.menuBarAccessoryImage(isDarkMode: isDark) : nil
+        let image = renderer.appendingKeepAwakeAccessory(accessory, to: rings)
+        let scale: CGFloat = 4
+        let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(image.size.width * scale), pixelsHigh: Int(image.size.height * scale), bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        bitmap.size = NSSize(width: image.size.width, height: image.size.height)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        (isDark ? NSColor.black : NSColor.white).setFill()
+        NSRect(origin: .zero, size: image.size).fill()
+        image.draw(in: NSRect(origin: .zero, size: image.size), from: .zero, operation: .sourceOver, fraction: 1)
+        NSGraphicsContext.restoreGraphicsState()
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { throw NSError(domain: "KeepAwakePreviewRenderer", code: 2) }
+        try data.write(to: url)
     }
 
     private static func capture(_ view: NSView, to url: URL) throws {

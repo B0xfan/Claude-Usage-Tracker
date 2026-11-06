@@ -261,6 +261,83 @@ final class KeepAwakeTests: XCTestCase {
         XCTAssertGreaterThan(image.size.width, 0)
     }
 
+    func testMenuBarCompositionLeavesIconUnchangedWhenKeepAwakeIsOff() {
+        let renderer = MenuBarIconRenderer()
+        let rings = renderer.createCombinedRingsIcon(
+            sessionPercentage: 25, weekPercentage: 50,
+            sessionLevel: .safe, weekLevel: .safe, isDarkMode: true
+        )
+        let combined = renderer.appendingKeepAwakeAccessory(nil, to: rings)
+        XCTAssertTrue(combined === rings, "Off must preserve the original image and width exactly")
+        XCTAssertEqual(combined.size, rings.size)
+    }
+
+    func testMenuBarCompositionPutsMarkImmediatelyRightOfRings() throws {
+        controller.start(duration: .untilOff, now: 0)
+        let renderer = MenuBarIconRenderer()
+        let rings = renderer.createCombinedRingsIcon(
+            sessionPercentage: 25, weekPercentage: 50,
+            sessionLevel: .safe, weekLevel: .safe, isDarkMode: true
+        )
+        let accessory = controller.menuBarAccessoryImage(isDarkMode: true)
+        let combined = renderer.appendingKeepAwakeAccessory(accessory, to: rings)
+        XCTAssertEqual(combined.size.width, rings.size.width + 2 + accessory.size.width, accuracy: 0.01)
+        XCTAssertEqual(combined.size.height, max(rings.size.height, accessory.size.height), accuracy: 0.01)
+
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(data: combined.tiffRepresentation ?? Data()))
+        let orange = KeepAwakeMarkColor.orange.nsColor.usingColorSpace(.sRGB)!
+        var markPixels: [Int] = []
+        for x in 0..<bitmap.pixelsWide {
+            for y in 0..<bitmap.pixelsHigh {
+                guard let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB), pixel.alphaComponent > 0.8 else { continue }
+                let close = abs(pixel.redComponent - orange.redComponent) < 0.08
+                    && abs(pixel.greenComponent - orange.greenComponent) < 0.08
+                    && abs(pixel.blueComponent - orange.blueComponent) < 0.08
+                if close { markPixels.append(x) }
+            }
+        }
+        let markLeft = CGFloat(try XCTUnwrap(markPixels.min()))
+        let expectedLeft = rings.size.width + 2
+        XCTAssertGreaterThanOrEqual(markLeft, expectedLeft, "The mark must be to the right of all ring pixels")
+        XCTAssertLessThanOrEqual(markLeft, expectedLeft + 4, "The gap must stay tight")
+    }
+
+    func testMenuBarCompositionWorksForOtherIconStylesAndMultipleProfiles() {
+        let renderer = MenuBarIconRenderer()
+        controller.start(duration: .untilOff, now: 0)
+        let activeAccessory = controller.menuBarAccessoryImage(isDarkMode: false)
+        let otherIcon = renderer.createCompactDot(percentage: 50, status: .safe, profileInitial: "W", monochromeMode: false, isDarkMode: false)
+        let combined = renderer.appendingKeepAwakeAccessory(activeAccessory, to: otherIcon)
+        XCTAssertEqual(combined.size.width, otherIcon.size.width + 2 + activeAccessory.size.width, accuracy: 0.01)
+        let firstProfile = renderer.appendingKeepAwakeAccessory(activeAccessory, to: otherIcon)
+        let secondProfile = renderer.appendingKeepAwakeAccessory(nil, to: otherIcon)
+        XCTAssertGreaterThan(firstProfile.size.width, secondProfile.size.width)
+        XCTAssertTrue(secondProfile === otherIcon)
+    }
+
+    func testMenuBarPausedStateUsesReadableText() {
+        controller.start(duration: .untilOff, now: 0)
+        controller.setLocked(true, now: 0)
+        XCTAssertTrue(controller.isPaused)
+        let image = controller.menuBarAccessoryImage(isDarkMode: true)
+        let activeSize = image.size
+        controller.setLocked(false, now: 30)
+        XCTAssertFalse(controller.isPaused)
+        XCTAssertLessThan(controller.menuBarAccessoryImage(isDarkMode: true).size.width, activeSize.width)
+    }
+
+    func testMenuBarOnOffLightAndDarkPNGs() throws {
+        let folder = URL(fileURLWithPath: "/tmp/usage-shelf-keep-awake-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for scheme in [ColorScheme.light, .dark] {
+            let name = scheme == .light ? "light" : "dark"
+            for active in [false, true] {
+                let state = active ? "on" : "off"
+                try KeepAwakePreviewRenderer.renderMenuBarV2(controller: controller, active: active, scheme: scheme, to: folder.appendingPathComponent("menu-bar-\(state)-\(name)-v2.png"))
+            }
+        }
+    }
+
     func testDarkSettingsPreviewUsesActualSettingsBackgrounds() throws {
         let controller = self.controller!
         try KeepAwakePreviewRenderer.renderSettings(controller: controller, scheme: .dark, to: URL(fileURLWithPath: "/tmp/usage-shelf-keep-awake-shots/settings-dark.png"))
@@ -279,7 +356,8 @@ final class KeepAwakeTests: XCTestCase {
             try KeepAwakePreviewRenderer.renderPopup(controller: controller, scheme: scheme, to: folder.appendingPathComponent("popup-on-\(name).png"))
             try KeepAwakePreviewRenderer.renderSettings(controller: controller, scheme: scheme, to: folder.appendingPathComponent("settings-\(name).png"))
             try KeepAwakePreviewRenderer.renderContextMenu(controller: controller, scheme: scheme, to: folder.appendingPathComponent("menu-\(name).png"))
-            try KeepAwakePreviewRenderer.renderMenuBar(controller: controller, scheme: scheme, to: folder.appendingPathComponent("menu-bar-\(name).png"))
+            let menuBarURL = folder.appendingPathComponent("menu-bar-\(name).png")
+            try KeepAwakePreviewRenderer.renderMenuBarV2(controller: controller, active: true, scheme: scheme, to: menuBarURL)
             controller.stop()
         }
     }
