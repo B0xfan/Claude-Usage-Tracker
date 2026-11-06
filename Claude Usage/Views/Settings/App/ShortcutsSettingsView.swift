@@ -76,16 +76,7 @@ struct ShortcutsSettingsView: View {
                                 warning: $keepAwakeWarning
                             )
                             if let keepAwakeWarning {
-                                HStack(alignment: .top, spacing: 8) {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                    Text(keepAwakeWarning).fixedSize(horizontal: false, vertical: true)
-                                }
-                                .font(DesignTokens.Typography.caption)
-                                .foregroundColor(.orange)
-                                .padding(DesignTokens.Spacing.medium)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(Color.orange.opacity(0.08)))
-                                .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(Color.orange.opacity(0.3)))
+                                ShortcutWarningView(message: keepAwakeWarning)
                             }
                         }
                     }

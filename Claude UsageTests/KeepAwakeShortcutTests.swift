@@ -99,6 +99,28 @@ final class KeepAwakeShortcutTests: XCTestCase {
         XCTAssertTrue(manager.perform(old))
     }
 
+    func testShortcutSymbolsAreSeparateAndLightPreviewIsActuallyLight() throws {
+        let combo = KeyCombo(keyCode: UInt16(kVK_ANSI_K), modifierFlags: [.control, .option, .command])
+        XCTAssertEqual(combo.displayComponents, ["⌃", "⌥", "⌘", "K"])
+        for scheme in [ColorScheme.light, .dark] {
+            XCTAssertGreaterThan(ShortcutWarningStyle.textColor(for: scheme).contrastRatio(with: ShortcutWarningStyle.backgroundColor(for: scheme)), 4.5)
+        }
+        let folder = URL(fileURLWithPath: "/tmp/usage-shelf-keep-awake-shots", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let originalAppearance = NSApp.appearance
+        NSApp.appearance = NSAppearance(named: .darkAqua)
+        defer { NSApp.appearance = originalAppearance }
+        let lightURL = folder.appendingPathComponent("shortcut-set-light.png")
+        try KeepAwakePreviewRenderer.renderShortcuts(manager: manager, state: .set, scheme: .light, to: lightURL)
+        XCTAssertTrue(KeepAwakePreviewRenderer.isMostlyWhite(try Data(contentsOf: lightURL)), "A light render must not inherit the test host's dark appearance")
+        let image = NSImage(contentsOf: lightURL)!
+        let bitmap = NSBitmapImageRep(data: image.tiffRepresentation!)!
+        let pixel = bitmap.colorAt(x: 20, y: 20)!.usingColorSpace(.sRGB)!
+        XCTAssertGreaterThan(pixel.redComponent, 0.95)
+        XCTAssertGreaterThan(pixel.greenComponent, 0.95)
+        XCTAssertGreaterThan(pixel.blueComponent, 0.95)
+    }
+
     func testModifierRuleAndRecordingPreviewStates() throws {
         XCTAssertFalse(ShortcutRecorderView.accepts(keyCode: UInt16(kVK_ANSI_K), modifiers: []))
         XCTAssertTrue(ShortcutRecorderView.accepts(keyCode: UInt16(kVK_ANSI_K), modifiers: [.control]))
@@ -126,5 +148,17 @@ final class ShortcutRegistrarSpy {
         combos.append(combo)
         let status = failures.contains(combo) ? OSStatus(eventHotKeyExistsErr) : noErr
         return (status, status == noErr ? OpaquePointer(bitPattern: combos.count) : nil)
+    }
+}
+
+private extension NSColor {
+    func contrastRatio(with other: NSColor) -> CGFloat {
+        func luminance(_ color: NSColor) -> CGFloat {
+            guard let color = color.usingColorSpace(.sRGB) else { return 0 }
+            func channel(_ value: CGFloat) -> CGFloat { value <= 0.04045 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4) }
+            return 0.2126 * channel(color.redComponent) + 0.7152 * channel(color.greenComponent) + 0.0722 * channel(color.blueComponent)
+        }
+        let values = [luminance(self), luminance(other)].sorted()
+        return (values[1] + 0.05) / (values[0] + 0.05)
     }
 }

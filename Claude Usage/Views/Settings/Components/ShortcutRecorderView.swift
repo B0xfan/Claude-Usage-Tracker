@@ -33,9 +33,14 @@ struct ShortcutRecorderView: View {
                             .font(DesignTokens.Typography.body)
                             .foregroundColor(.accentColor)
                     } else if let combo = keyCombo {
-                        Text(combo.displayString)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.primary)
+                        HStack(spacing: 4) {
+                            ForEach(combo.displayComponents, id: \.self) { component in
+                                Text(component)
+                                    .fixedSize()
+                            }
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.primary)
                     } else {
                         Text("shortcuts.record".localized)
                             .font(DesignTokens.Typography.body)
@@ -123,4 +128,41 @@ struct ShortcutRecorderView: View {
     }
     .padding()
     .frame(width: 300)
+}
+
+enum ShortcutWarningStyle {
+    static func textColor(for scheme: ColorScheme) -> NSColor {
+        scheme == .dark ? .systemOrange : NSColor(red: 0.43, green: 0.20, blue: 0.00, alpha: 1)
+    }
+
+    static func backgroundColor(for scheme: ColorScheme) -> NSColor {
+        let background = scheme == .dark ? NSColor(white: 0.16, alpha: 1) : NSColor(white: 0.97, alpha: 1)
+        guard let foreground = textColor(for: scheme).usingColorSpace(.sRGB),
+              let background = background.usingColorSpace(.sRGB) else { return background }
+        func composite(_ foreground: CGFloat, _ background: CGFloat) -> CGFloat { foreground * 0.08 + background * 0.92 }
+        return NSColor(srgbRed: composite(foreground.redComponent, background.redComponent), green: composite(foreground.greenComponent, background.greenComponent), blue: composite(foreground.blueComponent, background.blueComponent), alpha: 1)
+    }
+
+    static var text: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let scheme: ColorScheme = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
+            return textColor(for: scheme)
+        })
+    }
+}
+
+struct ShortcutWarningView: View {
+    let message: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(DesignTokens.Typography.caption)
+        .foregroundColor(ShortcutWarningStyle.text)
+        .padding(DesignTokens.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(ShortcutWarningStyle.text.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(ShortcutWarningStyle.text.opacity(0.3)))
+    }
 }

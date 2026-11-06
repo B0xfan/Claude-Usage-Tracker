@@ -222,13 +222,13 @@ enum KeepAwakePreviewRenderer {
                 .padding(12)
                 .frame(width: 190, alignment: .topLeading)
                 .frame(maxHeight: .infinity, alignment: .top)
-                .background(SidebarVisualEffect())
+                .background(PreviewSidebarMaterial())
             KeepAwakeSettingsView(controller: controller)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(scheme == .dark ? Color.black.opacity(0.15) : Color.white.opacity(0.3))
         }
         .frame(width: 720, height: 1050)
-        .background(SettingsBackground())
+        .background(PreviewSettingsMaterial())
         let hosting = NSHostingView(rootView: content.environment(\.colorScheme, scheme))
         hosting.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         hosting.frame = NSRect(origin: .zero, size: CGSize(width: 720, height: 1050))
@@ -274,14 +274,7 @@ enum KeepAwakePreviewRenderer {
                     shortcutPreviewRow(icon: "person.and.arrow.left.and.arrow.right", title: "Next profile", description: "Switch to the next profile", combo: nil)
                     shortcutPreviewRow(icon: "sun.max", title: "Keep awake", description: state == .recording ? "Escape cancels. A modifier is required." : "Turn Keep awake on with the last duration, or turn it off", combo: combo, recording: state == .recording)
                     if state == .clash {
-                        HStack(alignment: .top, spacing: 8) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                            Text("Already used by Top Shelf. Choose another shortcut.").fixedSize(horizontal: false, vertical: true)
-                        }
-                        .font(DesignTokens.Typography.caption).foregroundColor(.orange).padding(DesignTokens.Spacing.medium)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(Color.orange.opacity(0.08)))
-                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(Color.orange.opacity(0.3)))
+                        ShortcutWarningView(message: "Already used by Top Shelf. Choose another shortcut.")
                     }
                 }
             }
@@ -299,10 +292,10 @@ enum KeepAwakePreviewRenderer {
         }
         .padding(28)
         let content = HStack(spacing: 0) {
-            AppSettingsSection(selectedSection: .constant(.shortcuts)).padding(12).frame(width: 190, alignment: .topLeading).frame(maxHeight: .infinity, alignment: .top).background(SidebarVisualEffect())
+            AppSettingsSection(selectedSection: .constant(.shortcuts)).padding(12).frame(width: 190, alignment: .topLeading).frame(maxHeight: .infinity, alignment: .top).background(PreviewSidebarMaterial())
             rows.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(scheme == .dark ? Color.black.opacity(0.15) : Color.white.opacity(0.3))
         }
-        .frame(width: 720, height: 800).background(SettingsBackground())
+        .frame(width: 720, height: 800).background(PreviewSettingsMaterial())
         let hosting = NSHostingView(rootView: content.environment(\.colorScheme, scheme))
         hosting.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
         hosting.frame = NSRect(origin: .zero, size: CGSize(width: 720, height: 800))
@@ -343,6 +336,24 @@ enum KeepAwakePreviewRenderer {
         NSGraphicsContext.restoreGraphicsState()
         guard let data = bitmap.representation(using: .png, properties: [:]) else { throw NSError(domain: "KeepAwakePreviewRenderer", code: 2) }
         try data.write(to: url)
+    }
+
+    // Detached cacheDisplay cannot composite the real .behindWindow HUD material.
+    // Match the window's light/dark tint over a deterministic material base instead.
+    private struct PreviewSettingsMaterial: View {
+        @Environment(\.colorScheme) private var scheme
+        var body: some View {
+            (scheme == .dark ? Color(white: 0.12) : Color(white: 0.97))
+                .overlay((scheme == .dark ? Color.black : Color.white).opacity(scheme == .dark ? 0.35 : 0.4))
+        }
+    }
+
+    private struct PreviewSidebarMaterial: View {
+        @Environment(\.colorScheme) private var scheme
+        var body: some View {
+            (scheme == .dark ? Color(white: 0.12) : Color(white: 0.97))
+                .overlay((scheme == .dark ? Color.black : Color.white).opacity(scheme == .dark ? 0.55 : 0.5))
+        }
     }
 
     private static func capture(_ view: NSView, to url: URL) throws {

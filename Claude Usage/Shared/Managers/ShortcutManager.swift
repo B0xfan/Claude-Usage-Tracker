@@ -80,7 +80,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
         UInt32(keyCode)
     }
 
-    var displayString: String {
+    var displayComponents: [String] {
         var parts: [String] = []
         let flags = nsModifierFlags
         if flags.contains(.control) { parts.append("\u{2303}") }
@@ -88,7 +88,11 @@ struct KeyCombo: Codable, Equatable, Hashable {
         if flags.contains(.shift) { parts.append("\u{21E7}") }
         if flags.contains(.command) { parts.append("\u{2318}") }
         parts.append(KeyCombo.keyName(for: keyCode))
-        return parts.joined()
+        return parts
+    }
+
+    var displayString: String {
+        displayComponents.joined()
     }
 
     static func keyName(for keyCode: UInt16) -> String {
