@@ -185,7 +185,7 @@ final class CleaningModeController: ObservableObject {
         // A repeat interval faster than the three-second gesture and all four
         // finite durations makes the watchdog independent of input callbacks.
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.tick(now: Date().timeIntervalSinceReferenceDate) }
+            Task { @MainActor [weak self] in self?.tick(now: Date().timeIntervalSinceReferenceDate) }
         }
         timer?.tolerance = 0.01
     }
@@ -212,7 +212,7 @@ final class CleaningModeController: ObservableObject {
         // Capture preparingInput from an optional start captured inside a Task
         // when the caller needs to let the initiating mouse release finish.
         if now < 0 {
-            Task { @MainActor in self?.start(now: Date().timeIntervalSinceReferenceDate) }
+            Task { @MainActor [weak self] in _ = self?.start(now: Date().timeIntervalSinceReferenceDate) }
             return .started
         }
         shouldRestoreOtherInput = otherInput.suspend()
@@ -362,6 +362,7 @@ final class CleaningModeController: ObservableObject {
         ShortcutManager.shared.resumeAfterCleaningInterruption()
         TopShelfHost.shared.resumeAfterCleaningInterruption()
     }
+    func consumeSettingsRequest() { shouldOpenSettings = false }
     func openAccessibilitySettings() { permissions.open(.accessibility) }
     func openInputMonitoringSettings() { permissions.open(.inputMonitoring) }
 

@@ -702,7 +702,7 @@ class MenuBarManager: NSObject, ObservableObject {
     }
 
     private func presentCleaningSettings() {
-        cleaningMode.shouldOpenSettings = false
+        cleaningMode.consumeSettingsRequest()
         closePopoverOrWindow()
         NSApp.setActivationPolicy(.regular)
         let window: NSWindow

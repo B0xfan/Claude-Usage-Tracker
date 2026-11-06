@@ -34,10 +34,7 @@ final class TopShelfHost {
         let model = ShelfModel(live: true)
         self.model = model
         controller = ShelfController(model: model)
-        hotKeys = [
-            HotKey(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.tray) },
-            HotKey(keyCode: kVK_ANSI_V, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.clipboard) },
-        ]
+        registerHotKeys()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "menubar.rectangle", accessibilityDescription: "Top Shelf")
         item.menu = makeMenu(model)
@@ -47,6 +44,15 @@ final class TopShelfHost {
             if let model { self?.statusItem?.isVisible = model.showMenuBarIcon }
         }
         model.openSettings = { [weak model] in if let model { SettingsWindow.show(model) } }
+    }
+
+    /// Shared startup and Cleaning Mode restoration use the same shortcuts.
+    func registerHotKeys() {
+        guard let model, hotKeys.isEmpty else { return }
+        hotKeys = [
+            HotKey(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.tray) },
+            HotKey(keyCode: kVK_ANSI_V, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.clipboard) },
+        ]
     }
 
     private func makeMenu(_ model: ShelfModel) -> NSMenu {
@@ -84,6 +90,14 @@ final class HotKey {
     nonisolated(unsafe) private static var actions: [UInt32: () -> Void] = [:]
     fileprivate var ref: EventHotKeyRef?
     private var ownID: UInt32 = 0
+
+    func unregister() {
+        // Carbon also releases process registrations on termination. Explicit
+        // unregister lets Cleaning Mode restore ordinary input early.
+        guard let ref else { return }
+        UnregisterEventHotKey(ref)
+        self.ref = nil
+    }
 
     init(keyCode: Int, modifiers: Int, action: @escaping () -> Void) {
         if Self.actions.isEmpty { Self.installHandler() }

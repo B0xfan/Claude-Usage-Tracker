@@ -39,20 +39,7 @@ extension TopShelfHost {
 
     func resumeAfterCleaning() {
         guard model != nil, hotKeys.isEmpty, !Self.isRunningTests else { return }
-        hotKeys = [
-            HotKey(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.tray) },
-            HotKey(keyCode: kVK_ANSI_V, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.clipboard) },
-        ]
-    }
-}
-
-extension HotKey {
-    func unregister() {
-        // Carbon releases this process's registrations on termination as well.
-        // Explicit unregister lets Cleaning Mode restore ordinary input early.
-        guard let ref else { return }
-        UnregisterEventHotKey(ref)
-        self.ref = nil
+        registerHotKeys()
     }
 }
 

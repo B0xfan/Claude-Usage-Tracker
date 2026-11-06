@@ -75,6 +75,8 @@ final class CleaningModeTests: XCTestCase {
         XCTAssertEqual(controller.permissionState, .accessibilityNeeded)
         XCTAssertFalse(controller.canStart)
         XCTAssertEqual(blocker.startCount, 0)
+        controller.consumeSettingsRequest()
+        XCTAssertFalse(controller.shouldOpenSettings)
     }
 
     // 4
