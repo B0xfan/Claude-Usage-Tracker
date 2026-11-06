@@ -11,14 +11,48 @@ import Carbon
 
 // MARK: - Models
 
+enum ShortcutSetResult: Equatable {
+    case success
+    case duplicate(String)
+    case registrationFailed
+}
+
+protocol ShortcutStoring {
+    func saveShortcut(_ combo: KeyCombo?, for action: ShortcutAction)
+    func loadShortcut(for action: ShortcutAction) -> KeyCombo?
+}
+
+extension SharedDataStore: ShortcutStoring {}
+
+func resultWarning(_ result: ShortcutSetResult, combo: KeyCombo) -> String? {
+    switch result {
+    case .success: return nil
+    case .duplicate(let name): return "Already used by \(name). Choose another shortcut."
+    case .registrationFailed: return "This shortcut is already in use. Choose another one."
+    }
+}
+
+enum ShortcutPreviewState: String, CaseIterable { case empty, recording, set, clash }
+
 enum ShortcutAction: String, CaseIterable {
     case togglePopover
     case refresh
     case openSettings
     case nextProfile
+    case keepAwake
+
+    var displayName: String {
+        switch self {
+        case .togglePopover: return "Toggle popover"
+        case .refresh: return "Refresh usage"
+        case .openSettings: return "Open Settings"
+        case .nextProfile: return "Next profile"
+        case .keepAwake: return "Keep awake"
+        }
+    }
 }
 
-struct KeyCombo: Codable, Equatable {
+struct KeyCombo: Codable, Equatable, Hashable {
     let keyCode: UInt16
     let modifierFlags: UInt
 
@@ -140,83 +174,83 @@ struct KeyCombo: Codable, Equatable {
 class ShortcutManager {
     static let shared = ShortcutManager()
 
-    /// FourCharCode signature for our hotkey events
     private static let hotKeySignature: FourCharCode = {
         var result: FourCharCode = 0
-        for char in "CUHk".utf16 {
-            result = (result << 8) + FourCharCode(char)
-        }
+        for char in "CUHk".utf16 { result = (result << 8) + FourCharCode(char) }
         return result
     }()
 
     private var registeredHotKeys: [UInt32: (ref: EventHotKeyRef, action: ShortcutAction)] = [:]
     private var nextHotKeyID: UInt32 = 1
     private var eventHandler: EventHandlerRef?
+    private let store: ShortcutStoring
+    private let registrar: (KeyCombo, ShortcutAction, EventHotKeyID) -> (OSStatus, EventHotKeyRef?)
 
     private(set) var shortcuts: [ShortcutAction: KeyCombo] = [:]
-
     var onTogglePopover: (() -> Void)?
     var onRefresh: (() -> Void)?
     var onOpenSettings: (() -> Void)?
     var onNextProfile: (() -> Void)?
+    var onToggleKeepAwake: (() -> Void)?
 
-    private init() {
+    private convenience init() {
+        self.init(store: SharedDataStore.shared)
+    }
+
+    init(store: ShortcutStoring, registrar: @escaping (KeyCombo, ShortcutAction, EventHotKeyID) -> (OSStatus, EventHotKeyRef?) = ShortcutManager.registerCarbonHotKey) {
+        self.store = store
+        self.registrar = registrar
         loadShortcuts()
     }
 
-    // MARK: - Persistence
-
     private func loadShortcuts() {
-        let store = SharedDataStore.shared
         for action in ShortcutAction.allCases {
-            if let combo = store.loadShortcut(for: action) {
-                shortcuts[action] = combo
+            if let combo = store.loadShortcut(for: action) { shortcuts[action] = combo }
+        }
+    }
+
+    @discardableResult
+    func setShortcut(_ combo: KeyCombo?, for action: ShortcutAction) -> ShortcutSetResult {
+        if let combo {
+            if let duplicate = shortcuts.first(where: { $0.key != action && $0.value == combo }) {
+                return .duplicate(duplicate.key.displayName)
+            }
+            if combo.carbonModifiers == cmdKey | optionKey,
+               combo.keyCode == kVK_ANSI_T || combo.keyCode == kVK_ANSI_V {
+                return .duplicate("Top Shelf")
             }
         }
-    }
-
-    func setShortcut(_ combo: KeyCombo?, for action: ShortcutAction) {
-        if let combo = combo {
-            shortcuts[action] = combo
-        } else {
-            shortcuts.removeValue(forKey: action)
-        }
-        SharedDataStore.shared.saveShortcut(combo, for: action)
-
-        // Re-register all hotkeys
+        let previous = shortcuts[action]
+        shortcuts[action] = combo
         stopListening()
         startListening()
+        guard combo == nil || shortcuts[action] == combo else {
+            shortcuts[action] = previous
+            stopListening()
+            startListening()
+            return .registrationFailed
+        }
+        store.saveShortcut(combo, for: action)
+        return .success
     }
 
-    // MARK: - Carbon Hotkey Registration
+    func perform(_ combo: KeyCombo) -> Bool {
+        guard let entry = registeredHotKeys.values.first(where: { shortcuts[$0.action] == combo }) else { return false }
+        executeAction(entry.action)
+        return true
+    }
 
     func startListening() {
         guard eventHandler == nil else { return }
-        guard !shortcuts.isEmpty else {
-            LoggingService.shared.log("ShortcutManager: No shortcuts configured, skipping")
-            return
-        }
-
-        // Install the Carbon event handler
+        guard !shortcuts.isEmpty else { return }
         installEventHandler()
-
-        // Register each shortcut
-        for (action, combo) in shortcuts {
-            registerHotKey(combo, for: action)
-        }
-
-        LoggingService.shared.log("ShortcutManager: Started listening for \(shortcuts.count) shortcut(s): \(shortcuts.map { "\($0.key.rawValue)=\($0.value.displayString)" }.joined(separator: ", "))")
+        for (action, combo) in shortcuts { registerHotKey(combo, for: action) }
     }
 
     func stopListening() {
-        // Unregister all hotkeys
-        for (_, entry) in registeredHotKeys {
-            UnregisterEventHotKey(entry.ref)
-        }
+        for entry in registeredHotKeys.values { UnregisterEventHotKey(entry.ref) }
         registeredHotKeys.removeAll()
         nextHotKeyID = 1
-
-        // Remove event handler
         if let handler = eventHandler {
             RemoveEventHandler(handler)
             eventHandler = nil
@@ -224,94 +258,49 @@ class ShortcutManager {
     }
 
     private func installEventHandler() {
-        var eventTypes = [
-            EventTypeSpec(
-                eventClass: OSType(kEventClassKeyboard),
-                eventKind: UInt32(kEventHotKeyPressed)
-            )
-        ]
-
-        // Store a pointer to self for the C callback
+        var eventTypes = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))]
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        InstallEventHandler(GetEventDispatcherTarget(), { _, event, userData in
+            guard let event, let userData else { return OSStatus(eventNotHandledErr) }
+            let manager = Unmanaged<ShortcutManager>.fromOpaque(userData).takeUnretainedValue()
+            return manager.handleCarbonEvent(event)
+        }, eventTypes.count, &eventTypes, selfPtr, &eventHandler)
+    }
 
-        InstallEventHandler(
-            GetEventDispatcherTarget(),
-            { (_, event, userData) -> OSStatus in
-                guard let event = event, let userData = userData else {
-                    return OSStatus(eventNotHandledErr)
-                }
-
-                let manager = Unmanaged<ShortcutManager>.fromOpaque(userData).takeUnretainedValue()
-                return manager.handleCarbonEvent(event)
-            },
-            eventTypes.count,
-            &eventTypes,
-            selfPtr,
-            &eventHandler
-        )
+    private static func registerCarbonHotKey(_ combo: KeyCombo, action: ShortcutAction, id: EventHotKeyID) -> (OSStatus, EventHotKeyRef?) {
+        var ref: EventHotKeyRef?
+        let status = RegisterEventHotKey(combo.carbonKeyCode, combo.carbonModifiers, id, GetEventDispatcherTarget(), 0, &ref)
+        return (status, ref)
     }
 
     private func registerHotKey(_ combo: KeyCombo, for action: ShortcutAction) {
-        let hotKeyID = EventHotKeyID(signature: Self.hotKeySignature, id: nextHotKeyID)
-
-        var hotKeyRef: EventHotKeyRef?
-        let status = RegisterEventHotKey(
-            combo.carbonKeyCode,
-            combo.carbonModifiers,
-            hotKeyID,
-            GetEventDispatcherTarget(),
-            0,
-            &hotKeyRef
-        )
-
-        if status == noErr, let ref = hotKeyRef {
-            registeredHotKeys[nextHotKeyID] = (ref: ref, action: action)
-            LoggingService.shared.log("ShortcutManager: Registered hotkey \(combo.displayString) for \(action.rawValue) (id=\(nextHotKeyID))")
-            nextHotKeyID += 1
-        } else {
+        let id = EventHotKeyID(signature: Self.hotKeySignature, id: nextHotKeyID)
+        let (status, ref) = registrar(combo, action, id)
+        guard status == noErr, let ref else {
+            if action == .keepAwake { shortcuts.removeValue(forKey: action) }
             LoggingService.shared.log("ShortcutManager: Failed to register hotkey \(combo.displayString), status=\(status)")
+            return
         }
+        registeredHotKeys[nextHotKeyID] = (ref: ref, action: action)
+        nextHotKeyID += 1
     }
 
     private func handleCarbonEvent(_ event: EventRef) -> OSStatus {
         var hotKeyID = EventHotKeyID()
-        let status = GetEventParameter(
-            event,
-            UInt32(kEventParamDirectObject),
-            UInt32(typeEventHotKeyID),
-            nil,
-            MemoryLayout<EventHotKeyID>.size,
-            nil,
-            &hotKeyID
-        )
-
-        guard status == noErr else {
-            return status
-        }
-
-        guard hotKeyID.signature == Self.hotKeySignature,
-              let entry = registeredHotKeys[hotKeyID.id] else {
-            return OSStatus(eventNotHandledErr)
-        }
-
-        DispatchQueue.main.async { [weak self] in
-            self?.executeAction(entry.action)
-        }
-
+        let status = GetEventParameter(event, UInt32(kEventParamDirectObject), UInt32(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
+        guard status == noErr else { return status }
+        guard hotKeyID.signature == Self.hotKeySignature, let entry = registeredHotKeys[hotKeyID.id] else { return OSStatus(eventNotHandledErr) }
+        DispatchQueue.main.async { [weak self] in self?.executeAction(entry.action) }
         return noErr
     }
 
     private func executeAction(_ action: ShortcutAction) {
-        LoggingService.shared.log("ShortcutManager: Executing \(action.rawValue)")
         switch action {
-        case .togglePopover:
-            onTogglePopover?()
-        case .refresh:
-            onRefresh?()
-        case .openSettings:
-            onOpenSettings?()
-        case .nextProfile:
-            onNextProfile?()
+        case .togglePopover: onTogglePopover?()
+        case .refresh: onRefresh?()
+        case .openSettings: onOpenSettings?()
+        case .nextProfile: onNextProfile?()
+        case .keepAwake: onToggleKeepAwake?()
         }
     }
 }

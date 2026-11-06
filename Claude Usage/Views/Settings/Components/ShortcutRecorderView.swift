@@ -9,6 +9,11 @@ import SwiftUI
 
 struct ShortcutRecorderView: View {
     @Binding var keyCombo: KeyCombo?
+    var previewRecording = false
+
+    static func accepts(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        !modifiers.intersection([.command, .option, .control, .shift]).isEmpty && ![54, 55, 56, 57, 58, 59, 60, 61, 62, 63].contains(keyCode)
+    }
     @State private var isRecording = false
     @State private var localMonitor: Any?
 
@@ -16,14 +21,14 @@ struct ShortcutRecorderView: View {
         HStack(spacing: DesignTokens.Spacing.small) {
             // Display area
             Button {
-                if isRecording {
+                if isRecording || previewRecording {
                     stopRecording()
                 } else {
                     startRecording()
                 }
             } label: {
                 HStack(spacing: DesignTokens.Spacing.extraSmall) {
-                    if isRecording {
+                    if isRecording || previewRecording {
                         Text("shortcuts.recording".localized)
                             .font(DesignTokens.Typography.body)
                             .foregroundColor(.accentColor)
@@ -42,13 +47,13 @@ struct ShortcutRecorderView: View {
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                        .fill(isRecording ? Color.accentColor.opacity(0.1) : DesignTokens.Colors.cardBackground)
+                        .fill((isRecording || previewRecording) ? Color.accentColor.opacity(0.1) : DesignTokens.Colors.cardBackground)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                         .strokeBorder(
-                            isRecording ? Color.accentColor : DesignTokens.Colors.cardBorder,
-                            lineWidth: isRecording ? 2 : 1
+                            (isRecording || previewRecording) ? Color.accentColor : DesignTokens.Colors.cardBorder,
+                            lineWidth: isRecording || previewRecording ? 2 : 1
                         )
                 )
             }

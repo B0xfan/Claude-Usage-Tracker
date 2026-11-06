@@ -11,6 +11,8 @@ struct ShortcutsSettingsView: View {
     @State private var togglePopoverCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.togglePopover]
     @State private var refreshCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.refresh]
     @State private var openSettingsCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.openSettings]
+    @State private var keepAwakeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.keepAwake]
+    @State private var keepAwakeWarning: String?
     @State private var nextProfileCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.nextProfile]
 
     var body: some View {
@@ -63,6 +65,29 @@ struct ShortcutsSettingsView: View {
                             combo: $nextProfileCombo,
                             action: .nextProfile
                         )
+                        // Keep awake
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                            shortcutRow(
+                                icon: "sun.max",
+                                title: "Keep awake",
+                                description: "Turn Keep awake on with the last duration, or turn it off",
+                                combo: $keepAwakeCombo,
+                                action: .keepAwake,
+                                warning: $keepAwakeWarning
+                            )
+                            if let keepAwakeWarning {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                    Text(keepAwakeWarning).fixedSize(horizontal: false, vertical: true)
+                                }
+                                .font(DesignTokens.Typography.caption)
+                                .foregroundColor(.orange)
+                                .padding(DesignTokens.Spacing.medium)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(Color.orange.opacity(0.08)))
+                                .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(Color.orange.opacity(0.3)))
+                            }
+                        }
                     }
                 }
 
@@ -102,7 +127,8 @@ struct ShortcutsSettingsView: View {
         title: String,
         description: String,
         combo: Binding<KeyCombo?>,
-        action: ShortcutAction
+        action: ShortcutAction,
+        warning: Binding<String?>? = nil
     ) -> some View {
         HStack {
             HStack(spacing: DesignTokens.Spacing.iconText) {
@@ -125,8 +151,10 @@ struct ShortcutsSettingsView: View {
             ShortcutRecorderView(keyCombo: Binding(
                 get: { combo.wrappedValue },
                 set: { newValue in
-                    combo.wrappedValue = newValue
-                    ShortcutManager.shared.setShortcut(newValue, for: action)
+                    let previous = combo.wrappedValue
+                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
+                    warning?.wrappedValue = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
+                    if result != .success { combo.wrappedValue = previous }
                 }
             ))
         }
@@ -140,5 +168,5 @@ struct ShortcutsSettingsView: View {
 
 #Preview {
     ShortcutsSettingsView()
-        .frame(width: 520, height: 600)
+        .frame(width: 520, height: 680)
 }

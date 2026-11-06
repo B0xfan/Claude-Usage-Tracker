@@ -258,6 +258,9 @@ class MenuBarManager: NSObject, ObservableObject {
         shortcutManager.onNextProfile = { [weak self] in
             self?.switchToNextProfile()
         }
+        shortcutManager.onToggleKeepAwake = { [weak self] in
+            self?.keepAwake.toggle()
+        }
         shortcutManager.startListening()
     }
 

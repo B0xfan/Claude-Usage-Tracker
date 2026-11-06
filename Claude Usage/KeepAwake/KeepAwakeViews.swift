@@ -1,4 +1,5 @@
 import SwiftUI
+import Carbon
 import AppKit
 import UniformTypeIdentifiers
 
@@ -256,6 +257,72 @@ enum KeepAwakePreviewRenderer {
             Spacer()
         }
         .padding(.horizontal, 14).padding(.vertical, 5)
+    }
+
+    static func renderShortcuts(manager: ShortcutManager, state: ShortcutPreviewState, scheme: ColorScheme, to url: URL) throws {
+        let example = KeyCombo(keyCode: UInt16(kVK_ANSI_K), modifierFlags: [.control, .option, .command])
+        let clash = KeyCombo(keyCode: UInt16(kVK_ANSI_T), modifierFlags: [.command, .option])
+        let combo = state == .set ? example : state == .clash ? clash : nil
+        let rows = VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
+            SettingsPageHeader(title: "Keyboard Shortcuts", subtitle: "Set global shortcuts for common actions")
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+                Text("Keyboard Shortcuts").font(DesignTokens.Typography.sectionTitle)
+                VStack(spacing: DesignTokens.Spacing.small) {
+                    shortcutPreviewRow(icon: "rectangle.portrait.and.arrow.right", title: "Toggle popover", description: "Show or hide the usage panel", combo: nil)
+                    shortcutPreviewRow(icon: "arrow.clockwise", title: "Refresh usage", description: "Get the latest usage data", combo: nil)
+                    shortcutPreviewRow(icon: "gearshape", title: "Open Settings", description: "Open the Settings window", combo: nil)
+                    shortcutPreviewRow(icon: "person.and.arrow.left.and.arrow.right", title: "Next profile", description: "Switch to the next profile", combo: nil)
+                    shortcutPreviewRow(icon: "sun.max", title: "Keep awake", description: state == .recording ? "Escape cancels. A modifier is required." : "Turn Keep awake on with the last duration, or turn it off", combo: combo, recording: state == .recording)
+                    if state == .clash {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                            Text("Already used by Top Shelf. Choose another shortcut.").fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(DesignTokens.Typography.caption).foregroundColor(.orange).padding(DesignTokens.Spacing.medium)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(Color.orange.opacity(0.08)))
+                        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(Color.orange.opacity(0.3)))
+                    }
+                }
+            }
+            HStack(spacing: DesignTokens.Spacing.medium) {
+                Image(systemName: "info.circle.fill").foregroundColor(.blue)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Global shortcuts").font(DesignTokens.Typography.body)
+                    Text("Shortcuts work in any app. Use at least one modifier: Command, Option, Control, or Shift. No Accessibility permission is needed.")
+                        .font(DesignTokens.Typography.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(DesignTokens.Spacing.medium)
+            .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(Color.blue.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(Color.blue.opacity(0.2)))
+        }
+        .padding(28)
+        let content = HStack(spacing: 0) {
+            AppSettingsSection(selectedSection: .constant(.shortcuts)).padding(12).frame(width: 190, alignment: .topLeading).frame(maxHeight: .infinity, alignment: .top).background(SidebarVisualEffect())
+            rows.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).background(scheme == .dark ? Color.black.opacity(0.15) : Color.white.opacity(0.3))
+        }
+        .frame(width: 720, height: 800).background(SettingsBackground())
+        let hosting = NSHostingView(rootView: content.environment(\.colorScheme, scheme))
+        hosting.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+        hosting.frame = NSRect(origin: .zero, size: CGSize(width: 720, height: 800))
+        try capture(hosting, to: url)
+    }
+
+    private static func shortcutPreviewRow(icon: String, title: String, description: String, combo: KeyCombo?, recording: Bool = false) -> some View {
+        HStack {
+            HStack(spacing: DesignTokens.Spacing.iconText) {
+                Image(systemName: icon).font(.system(size: DesignTokens.Icons.standard)).foregroundColor(.accentColor).frame(width: DesignTokens.Spacing.iconFrame)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(DesignTokens.Typography.body)
+                    Text(description).font(DesignTokens.Typography.caption).foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            ShortcutRecorderView(keyCombo: .constant(combo), previewRecording: recording)
+        }
+        .padding(DesignTokens.Spacing.medium)
+        .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(DesignTokens.Colors.cardBackground))
     }
 
     static func renderMenuBarV3(controller: KeepAwakeController, active: Bool, scheme: ColorScheme, to url: URL) throws {
