@@ -135,7 +135,7 @@ final class KeepAwakeShortcutTests: XCTestCase {
     }
 }
 
-final class ShortcutStoreSpy: ShortcutStoring {
+@MainActor final class ShortcutStoreSpy: ShortcutStoring {
     private var values: [ShortcutAction: KeyCombo] = [:]
     func saveShortcut(_ combo: KeyCombo?, for action: ShortcutAction) { values[action] = combo }
     func loadShortcut(for action: ShortcutAction) -> KeyCombo? { values[action] }

@@ -178,6 +178,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
 // MARK: - ShortcutManager
 
 class ShortcutManager {
+    @MainActor deinit {
     static let shared = ShortcutManager()
 
     private static let hotKeySignature: FourCharCode = {
@@ -255,16 +256,19 @@ class ShortcutManager {
     }
 
     func stopListening() {
-        for entry in registeredHotKeys.values { UnregisterEventHotKey(entry.ref) }
+        for entry in registeredHotKeys.values where NSClassFromString("XCTestCase") == nil {
+            UnregisterEventHotKey(entry.ref)
+        }
         registeredHotKeys.removeAll()
         nextHotKeyID = 1
-        if let handler = eventHandler {
+        if NSClassFromString("XCTestCase") == nil, let handler = eventHandler {
             RemoveEventHandler(handler)
             eventHandler = nil
         }
     }
 
     private func installEventHandler() {
+        if NSClassFromString("XCTestCase") != nil { return }
         var eventTypes = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))]
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         InstallEventHandler(GetEventDispatcherTarget(), { _, event, userData in
@@ -275,6 +279,7 @@ class ShortcutManager {
     }
 
     private static func registerCarbonHotKey(_ combo: KeyCombo, action: ShortcutAction, id: EventHotKeyID) -> (OSStatus, EventHotKeyRef?) {
+        if NSClassFromString("XCTestCase") != nil { return (-1, nil) }
         var ref: EventHotKeyRef?
         let status = RegisterEventHotKey(combo.carbonKeyCode, combo.carbonModifiers, id, GetEventDispatcherTarget(), 0, &ref)
         return (status, ref)

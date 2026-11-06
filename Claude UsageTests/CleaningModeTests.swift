@@ -92,7 +92,10 @@ final class CleaningModeTests: XCTestCase {
         permissions.accessibility = false
         controller.refreshPermissions()
         XCTAssertEqual(controller.permissionState, .accessibilityNeeded)
+        // Restore Accessibility but leave this separately required grant absent.
+        // A spy declaring Monitoring granted contradicts this expected state.
         permissions.accessibility = true
+        permissions.inputMonitoring = false
         controller.settingsBecameActive()
         XCTAssertEqual(controller.permissionState, .inputMonitoringNeeded)
         XCTAssertFalse(controller.canStart)
@@ -209,6 +212,9 @@ final class CleaningModeTests: XCTestCase {
         XCTAssertFalse(controller.isActive)
         XCTAssertEqual(controller.endReason, .permissionLost)
         XCTAssertEqual(overlay.hideCount, 1)
+        // Restore the user's actual prerequisites before starting a second session.
+        permissions.accessibility = true
+        permissions.inputMonitoring = true
         readyStart(now: 200)
         controller.inputMechanismFailed()
         XCTAssertFalse(controller.isActive)
@@ -296,7 +302,7 @@ final class CleaningModeTests: XCTestCase {
     }
 }
 
-final class CleaningPermissionsSpy: CleaningPermissionHandling {
+@MainActor final class CleaningPermissionsSpy: CleaningPermissionHandling {
     var accessibility = true
     var inputMonitoring = true
     var requiresRelaunch = false

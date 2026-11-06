@@ -216,6 +216,10 @@ final class CleaningModeController: ObservableObject {
             return .started
         }
         shouldRestoreOtherInput = otherInput.suspend()
+        guard shouldRestoreOtherInput else {
+            end(reason: .inputFailure)
+            return .inputUnavailable
+        }
         guard blocker.start(configuration: CleaningInputConfiguration(blockPointer: settings.blockPointer && settings.screenAppearance == .dimmed)) else {
             end(reason: .inputFailure)
             return .inputUnavailable
@@ -232,11 +236,12 @@ final class CleaningModeController: ObservableObject {
         sessionGeneration += 1
         let generation = sessionGeneration
         shouldOpenSettings = false
+        // The assertion belongs to the session, not to the deferred drawing pass.
+        awake.acquire()
         // Defer creation so the release of the click that chose the menu item is
         // delivered normally rather than treated as a cleaning release.
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isActive, self.sessionGeneration == generation else { return }
-            self.awake.acquire()
             self.overlay.show(appearance: self.settings.screenAppearance)
             self.overlay.update(remaining: self.remaining(at: Date().timeIntervalSinceReferenceDate), holdProgress: 0)
         }

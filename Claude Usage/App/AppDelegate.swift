@@ -7,6 +7,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     private var setupWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Keep the test host from starting production credentials, permissions,
+        // profiles, notifications, or global input shortcuts.
+        if NSClassFromString("XCTestCase") != nil { return }
+
         // Disable window restoration for menu bar app
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
 
