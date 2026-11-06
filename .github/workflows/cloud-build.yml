@@ -53,6 +53,26 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Summarize Cleaning Mode Results
+        if: always()
+        run: |
+          if test -d CleaningMode.xcresult; then
+            xcrun xcresulttool get test-results tests --path CleaningMode.xcresult --format json > CleaningModeTests.json
+            node -e 'const r=require("./CleaningModeTests.json"); function walk(n){ if(n.nodeType==="Test Case") console.log(n.name+": "+n.result); (n.children||[]).forEach(walk); }; r.testNodes.forEach(walk)'
+          fi
+
+      - name: Upload Test Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleaning-mode-test-evidence-${{ github.sha }}
+          path: |
+            CleaningMode.xcresult
+            CleaningModeTests.json
+          if-no-files-found: ignore
+          retention-days: 7
+          compression-level: 0
+
       - name: Build Unsigned Release
         run: |
           xcodebuild build \
@@ -70,6 +90,7 @@ jobs:
           cp -R "build/Build/Products/Release/Usage Shelf.app" artifacts/
           cp -R "/tmp/usage-shelf-cleaning-mode-shots" artifacts/cleaning-mode-shots
           test -f "artifacts/Usage Shelf.app/Contents/MacOS/Usage Shelf"
+          lipo -info "artifacts/Usage Shelf.app/Contents/MacOS/Usage Shelf"
 
       - name: Upload Unsigned Build
         uses: actions/upload-artifact@v4
