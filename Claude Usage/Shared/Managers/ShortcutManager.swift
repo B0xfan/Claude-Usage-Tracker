@@ -177,8 +177,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
 
 // MARK: - ShortcutManager
 
-class ShortcutManager {
-    @MainActor deinit {
+@MainActor class ShortcutManager {
     static let shared = ShortcutManager()
 
     private static let hotKeySignature: FourCharCode = {
