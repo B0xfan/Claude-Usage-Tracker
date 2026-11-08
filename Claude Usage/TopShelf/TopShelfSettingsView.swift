@@ -4,9 +4,18 @@ import SwiftUI
 /// Top Shelf Settings, laid out as the approved settings mockup (settings-mockup.html), in the Mac's own grouped style.
 struct TopShelfSettingsView: View {
     @Bindable var model: ShelfModel
+    /// Set only in the Usage Shelf Settings window, where the shelf may be missing from the notch.
+    var showShelf: (() -> Void)? = nil
 
     var body: some View {
         Form {
+            if let showShelf {
+                Section("Shelf") {
+                    LabeledContent("Shelf missing from the notch?") {
+                        Button("Show the shelf", action: showShelf)
+                    }
+                }
+            }
             Section("Opening") {
                 Picker("Open the shelf by", selection: $model.openMode) {
                     ForEach(ShelfModel.OpenMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }

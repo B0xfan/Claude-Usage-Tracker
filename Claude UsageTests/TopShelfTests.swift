@@ -739,3 +739,37 @@ extension SelfTest {
 }
 
 
+
+/// Top Shelf's settings inside the Usage Shelf Settings window carry a "Show the shelf" button; the gear's window does not.
+@MainActor
+final class TopShelfSettingsPageTests: XCTestCase {
+    func testUsageSettingsPageAddsShowShelfButton() throws {
+        let name = "TopShelfSettingsPageTests-\(UUID().uuidString)"
+        TopShelfDefaults.store = UserDefaults(suiteName: name)!
+        defer {
+            TopShelfDefaults.store.removePersistentDomain(forName: name)
+            TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
+        }
+        let m = ShelfModel()
+        var shown = 0
+        func height<V: View>(_ v: V) -> CGFloat { NSHostingView(rootView: v.fixedSize(horizontal: false, vertical: true)).fittingSize.height }
+        let plain = height(TopShelfSettingsView(model: m))
+        let page = TopShelfSettingsView(model: m, showShelf: { shown += 1 })
+        XCTAssertGreaterThan(height(page), plain, "the page shows an extra Shelf section")
+        page.showShelf?()
+        XCTAssertEqual(shown, 1)
+
+        // Pictures for the cloud run's artifact (light and dark).
+        let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for (look, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+            let host = NSHostingView(rootView: page.frame(height: 700))
+            host.appearance = NSAppearance(named: appearance)
+            host.frame = NSRect(x: 0, y: 0, width: 530, height: 700)
+            host.layoutSubtreeIfNeeded()
+            let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("dynamic-island-page-\(look).png"))
+        }
+    }
+}

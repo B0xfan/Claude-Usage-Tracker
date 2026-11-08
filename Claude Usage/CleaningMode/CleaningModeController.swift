@@ -371,8 +371,8 @@ final class CleaningModeController: ObservableObject {
     func openAccessibilitySettings() { permissions.open(.accessibility) }
     func openInputMonitoringSettings() { permissions.open(.inputMonitoring) }
 
+    /// A change during a session is saved for the next one; the running session keeps the input set up at its start.
     func update<Value>(_ keyPath: WritableKeyPath<CleaningModeSettings, Value>, value: Value) {
-        guard !isActive else { return }
         settings[keyPath: keyPath] = value
         switch keyPath {
         case \CleaningModeSettings.duration: defaults.set((value as! CleaningDuration).rawValue, forKey: "cleaningMode.duration")

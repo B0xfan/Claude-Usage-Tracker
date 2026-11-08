@@ -55,6 +55,9 @@ final class TopShelfHost {
         ]
     }
 
+    /// Puts the shelf back at the notch (the Settings window's "Show the shelf" button).
+    func showShelf() { controller?.showAgain() }
+
     private func makeMenu(_ model: ShelfModel) -> NSMenu {
         let menu = NSMenu()
         menu.addItem(item("Open Top Shelf", "t", [.command, .option]) { [weak model] in model?.open(.tray) })

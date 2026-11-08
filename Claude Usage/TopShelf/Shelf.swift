@@ -249,6 +249,12 @@ final class ShelfController {
     private func mouseMoved(_ p: NSPoint) { hover.moved(inNotch: notchRect.insetBy(dx: -1, dy: -1).contains(p)) }
     private func mouseLeft() { hover.left() }
 
+    /// Finds the notch screen again and brings the shelf back to the front.
+    func showAgain() {
+        place()
+        updateFullscreen()
+    }
+
     // MARK: fullscreen
 
     private var isFullscreen = false

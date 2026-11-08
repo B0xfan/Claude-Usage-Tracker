@@ -48,6 +48,8 @@ jobs:
             -derivedDataPath build \
             -destination "platform=macOS" \
             -only-testing:"Claude UsageTests/CleaningModeTests" \
+            -only-testing:"Claude UsageTests/TopShelfTests" \
+            -only-testing:"Claude UsageTests/TopShelfSettingsPageTests" \
             -resultBundlePath "CleaningMode.xcresult" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -61,6 +63,13 @@ jobs:
             node -e 'const r=require("./CleaningModeTests.json"); function walk(n){ if(n.nodeType==="Test Case") console.log(n.name+": "+n.result); (n.children||[]).forEach(walk); }; r.testNodes.forEach(walk)'
           fi
 
+      - name: Collect Crash Reports
+        if: always()
+        run: |
+          mkdir -p crash-reports
+          find ~/Library/Logs/DiagnosticReports /Library/Logs/DiagnosticReports -name 'Usage Shelf*' -exec cp {} crash-reports/ \; 2>/dev/null || true
+          for f in crash-reports/*; do test -f "$f" && head -c 6000 "$f"; done || true
+
       - name: Upload Test Evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,6 +78,7 @@ jobs:
           path: |
             CleaningMode.xcresult
             CleaningModeTests.json
+            crash-reports
           if-no-files-found: ignore
           retention-days: 7
           compression-level: 0
@@ -91,6 +101,7 @@ jobs:
           mkdir -p artifacts
           cp -R "build/Build/Products/Release/Usage Shelf.app" artifacts/
           cp -R "/tmp/usage-shelf-cleaning-mode-shots" artifacts/cleaning-mode-shots
+          cp -R "/tmp/usage-shelf-settings-shots" artifacts/settings-shots
           test -f "artifacts/Usage Shelf.app/Contents/MacOS/Usage Shelf"
           lipo -info "artifacts/Usage Shelf.app/Contents/MacOS/Usage Shelf"
 

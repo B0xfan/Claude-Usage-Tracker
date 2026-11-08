@@ -308,10 +308,12 @@ struct SettingsView: View {
                     ClaudeCodeView()
                 case .notchHUD:
                     if Constants.NotchHUD.replacedByTopShelf {
-                        // Top Shelf replaced this display; its settings open from the gear on the open shelf.
-                        Text("Top Shelf now shows at the notch in place of this display. Its settings open from the gear button on the open shelf.")
-                            .foregroundStyle(.secondary)
-                            .padding()
+                        // Top Shelf replaced this display; its settings live here too, so they stay reachable when the shelf is not showing.
+                        if let model = TopShelfHost.shared.model {
+                            TopShelfSettingsView(model: model, showShelf: { TopShelfHost.shared.showShelf() })
+                        } else {
+                            Text("Top Shelf is not running.").foregroundStyle(.secondary).padding()
+                        }
                     } else {
                         NotchHUDSettingsView()
                     }
