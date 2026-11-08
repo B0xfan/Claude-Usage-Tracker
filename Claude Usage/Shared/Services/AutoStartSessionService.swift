@@ -11,6 +11,8 @@ import Cocoa
 /// Background service that monitors all profiles and auto-starts sessions when they reset
 @MainActor
 final class AutoStartSessionService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = AutoStartSessionService()
 
     // Timer for 5-minute check cycle

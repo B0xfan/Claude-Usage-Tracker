@@ -5,6 +5,8 @@ import SwiftUI
 /// instantiate this controller or show a window.
 @MainActor
 final class CleaningOverlayController: CleaningOverlayHandling {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = CleaningOverlayController()
     private var windows: [NSWindow] = []
     private var appearance = CleaningScreenAppearance.dimmed

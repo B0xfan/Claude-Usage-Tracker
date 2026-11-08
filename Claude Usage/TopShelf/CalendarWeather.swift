@@ -6,6 +6,8 @@ import Observation
 /// The current or next event today, from every calendar on the Mac.
 @Observable
 final class CalendarService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     struct Event: Equatable {
         var title: String
         var start: Date
@@ -55,6 +57,8 @@ final class CalendarService {
 /// or for a place picked in Settings.
 @Observable
 final class WeatherService: NSObject, CLLocationManagerDelegate {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     struct Place: Codable, Hashable {
         var name: String, region: String, country: String, latitude: Double, longitude: Double
         var label: String { [name, region, country].filter { !$0.isEmpty }.joined(separator: ", ") }

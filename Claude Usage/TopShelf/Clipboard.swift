@@ -8,6 +8,8 @@ import Vision
 /// Repeats are merged with a count; pinned clips stay; the rest go after a week. Passwords are never kept.
 @Observable
 final class ClipboardHistory {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     struct Clip: Codable, Identifiable, Equatable {
         enum Kind: String, Codable { case text, rich, image, files }
         var id = UUID()

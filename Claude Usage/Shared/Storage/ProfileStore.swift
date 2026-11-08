@@ -9,6 +9,8 @@ import Foundation
 
 /// Manages storage and retrieval of profiles and profile-related data
 class ProfileStore {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = ProfileStore()
 
     private let defaults: UserDefaults

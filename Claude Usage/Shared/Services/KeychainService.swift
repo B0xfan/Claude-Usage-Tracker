@@ -10,6 +10,8 @@ import Security
 
 /// Service for secure storage and retrieval of sensitive data using macOS Keychain
 class KeychainService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = KeychainService()
 
     private init() {}

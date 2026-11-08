@@ -11,6 +11,8 @@ import Combine
 
 /// Manages app language selection and switching
 class LanguageManager: ObservableObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = LanguageManager()
 
     @Published var currentLanguage: SupportedLanguage {

@@ -12,6 +12,8 @@ import UniformTypeIdentifiers
 /// Service for managing usage history data
 @MainActor
 class UsageHistoryService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = UsageHistoryService()
 
     private let defaults: UserDefaults

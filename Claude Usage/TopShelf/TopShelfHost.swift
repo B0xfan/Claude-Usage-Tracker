@@ -19,6 +19,8 @@ enum TopShelfDefaults {
 
 /// Starts Top Shelf inside the tracker: the shelf at the notch, its shortcuts and its optional menu bar icon.
 final class TopShelfHost {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = TopShelfHost()
 
     private(set) var model: ShelfModel?
@@ -76,6 +78,8 @@ final class TopShelfHost {
 
 /// A menu item that runs a closure, so the menu needs no selector plumbing.
 final class MenuAction: NSMenuItem {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private let run: () -> Void
     init(title: String, key: String, action: @escaping () -> Void) {
         run = action
@@ -89,6 +93,8 @@ final class MenuAction: NSMenuItem {
 /// System-wide shortcut through Carbon, which needs no Accessibility permission. Only answers its own
 /// shortcuts (signature "TSHF"), so the tracker's own shortcuts (ShortcutManager) keep working.
 final class HotKey {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let signature: OSType = 0x5453_4846
     nonisolated(unsafe) private static var actions: [UInt32: () -> Void] = [:]
     fileprivate var ref: EventHotKeyRef?

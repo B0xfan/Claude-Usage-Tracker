@@ -178,6 +178,8 @@ struct KeyCombo: Codable, Equatable, Hashable {
 // MARK: - ShortcutManager
 
 @MainActor class ShortcutManager {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = ShortcutManager()
 
     private static let hotKeySignature: FourCharCode = {

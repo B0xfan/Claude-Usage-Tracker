@@ -11,6 +11,8 @@ import CryptoKit
 
 /// Manages synchronization of Claude Code CLI credentials between system Keychain and profiles
 class ClaudeCodeSyncService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = ClaudeCodeSyncService()
 
     /// Cached resolved keychain service name (in-memory, cleared per app session)

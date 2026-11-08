@@ -3,6 +3,8 @@ import SwiftUI
 import Combine
 
 class MenuBarManager: NSObject, ObservableObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private var statusItem: NSStatusItem?  // Legacy - kept for backwards compatibility
     private var statusBarUIManager: StatusBarUIManager?
     private var refreshTimer: Timer?

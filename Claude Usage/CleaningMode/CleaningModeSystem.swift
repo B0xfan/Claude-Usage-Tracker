@@ -5,6 +5,8 @@ import IOKit
 import IOKit.pwr_mgt
 
 final class CleaningPermissions: CleaningPermissionHandling {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     var accessibilityGranted: Bool { AXIsProcessTrusted() }
     var inputMonitoringGranted: Bool {
         if #available(macOS 10.15, *) { return CGPreflightListenEventAccess() }

@@ -9,6 +9,8 @@ import Foundation
 
 /// Service for migrating session keys from file-based and UserDefaults storage to Keychain
 class KeychainMigrationService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = KeychainMigrationService()
 
     private init() {}

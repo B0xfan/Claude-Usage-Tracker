@@ -120,6 +120,8 @@ protocol KeepAwakePointerHandling: AnyObject {
 }
 
 final class KeepAwakePointer: KeepAwakePointerHandling {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     var isTrusted: Bool { AXIsProcessTrusted() }
     func requestTrust() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else { return }
@@ -141,6 +143,8 @@ protocol KeepAwakeEnvironmentHandling: AnyObject {
 }
 
 final class KeepAwakeSystemEnvironment: KeepAwakeEnvironmentHandling {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     var hasExternalDisplay: Bool { NSScreen.screens.count > 1 }
     var currentPower: KeepAwakePower {
         guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
@@ -164,6 +168,8 @@ final class KeepAwakeSystemEnvironment: KeepAwakeEnvironmentHandling {
 
 @MainActor
 final class KeepAwakeController: ObservableObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = KeepAwakeController(defaults: .standard)
 
     @Published private(set) var settings: KeepAwakeSettings

@@ -2,6 +2,8 @@ import Foundation
 
 /// Service for fetching usage data directly from Claude's API
 class ClaudeAPIService: APIServiceProtocol {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     // MARK: - Types
 
     /// Authentication method for API requests

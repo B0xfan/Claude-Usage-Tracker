@@ -10,6 +10,8 @@ import Combine
 
 /// Manages multiple menu bar status items for different metrics
 final class StatusBarUIManager {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     // Dictionary to hold multiple status items keyed by metric type (single profile mode)
     private var statusItems: [MenuBarMetricType: NSStatusItem] = [:]
 

@@ -9,6 +9,8 @@ import Foundation
 
 /// Manages app-wide settings that are shared across all profiles
 class SharedDataStore {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = SharedDataStore()
 
     private let defaults: UserDefaults

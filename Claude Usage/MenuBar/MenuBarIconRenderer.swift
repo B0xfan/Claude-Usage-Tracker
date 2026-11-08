@@ -9,6 +9,8 @@ import Cocoa
 
 /// Handles rendering of individual metric icons for the menu bar
 final class MenuBarIconRenderer {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
 
     // MARK: - Public Methods
 

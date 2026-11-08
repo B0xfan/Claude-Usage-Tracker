@@ -3,6 +3,8 @@ import AppKit
 /// Only successful shutdown of an existing Top Shelf host requires restoration.
 /// Other features share the process-wide hosts but no new saved preference.
 final class CleaningOtherInputCoordinator: CleaningOtherInputHandling {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private let shortcuts: ShortcutManager
     private let topShelf: TopShelfHost
     private var resumeShortcuts = false

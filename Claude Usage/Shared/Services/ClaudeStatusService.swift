@@ -2,6 +2,8 @@ import Foundation
 
 /// Service for fetching Claude system status
 class ClaudeStatusService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private let statusURL: URL
 
     /// Response structure from Statuspage API

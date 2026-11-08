@@ -8,6 +8,8 @@ import SwiftUI
 /// Hooks post to a listener that only this Mac can reach (127.0.0.1) and must carry a secret made on first run.
 @Observable
 final class Agents {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     enum State: String { case working = "Working", idle = "Idle", attention = "Needs attention" }
     struct Session: Identifiable, Equatable {
         var id: String

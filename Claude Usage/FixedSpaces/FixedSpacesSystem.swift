@@ -8,6 +8,8 @@ protocol FixedSpacesSystemHandling: AnyObject {
 
 /// The only production type that can touch Dock preferences or restart Dock.
 final class FixedSpacesSystem: FixedSpacesSystemHandling {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private static let domain = "com.apple.dock"
     private static let key = "mru-spaces"
 

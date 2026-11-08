@@ -18,6 +18,8 @@ import Foundation
 import Network
 
 final class NotchHookServer {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = NotchHookServer()
 
     private let queue = DispatchQueue(label: "com.claudeusagetracker.notchhud.server")

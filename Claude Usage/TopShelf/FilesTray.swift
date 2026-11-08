@@ -21,6 +21,8 @@ func savePrivately<T: Encodable>(_ value: T, to url: URL?) {
 /// Up to six files kept on the shelf by reference (the files themselves stay where they are).
 @Observable
 final class FilesTray {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     struct Item: Codable, Equatable, Identifiable {
         var path: String
         var added: Date
@@ -101,6 +103,8 @@ struct FileDragSource: NSViewRepresentable {
     func updateNSView(_ v: DragView, context: Context) { v.url = url; v.dropped = dropped }
 
     final class DragView: NSView, NSDraggingSource {
+        // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+        nonisolated deinit {}
         var url: URL?
         var dropped: () -> Void = {}
         private var down: NSEvent?

@@ -104,6 +104,8 @@ struct SidebarVisualEffect: NSViewRepresentable {
 
 /// Borderless window that keeps rounded corners, shadow, and drag-to-move.
 final class BorderlessSettingsWindow: NSWindow {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     override init(contentRect: NSRect, styleMask: NSWindow.StyleMask,
                   backing: NSWindow.BackingStoreType, defer flag: Bool) {
         super.init(contentRect: contentRect,

@@ -11,6 +11,8 @@
 import Foundation
 
 final class NotchHookInstaller {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = NotchHookInstaller()
 
     /// The 8 passive hook events the HUD observes. Deliberately excludes

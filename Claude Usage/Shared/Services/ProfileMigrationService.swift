@@ -9,6 +9,8 @@ import Foundation
 
 /// Handles migration from single-profile (v2.x) to multi-profile system (v3.0)
 class ProfileMigrationService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = ProfileMigrationService()
 
     private let migrationKey = "didMigrateToProfilesV3"

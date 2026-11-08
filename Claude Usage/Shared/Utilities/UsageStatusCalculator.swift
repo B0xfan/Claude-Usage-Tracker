@@ -2,6 +2,8 @@ import Foundation
 
 /// Centralized utility for calculating usage status levels with configurable display modes
 final class UsageStatusCalculator {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
 
     /// Calculate status level based on percentage, display mode, and optional pacing
     /// - Parameters:

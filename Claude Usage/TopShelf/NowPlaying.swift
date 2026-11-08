@@ -5,6 +5,8 @@ import Observation
 /// Third-party apps lost direct access in macOS 15.4, so a small helper runs inside /usr/bin/perl (Helper/).
 @Observable
 final class NowPlaying {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     var title: String?
     var artist: String?
     var album: String?

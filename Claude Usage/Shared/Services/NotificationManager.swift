@@ -4,6 +4,8 @@ import AppKit
 
 /// Manages user notifications for usage threshold alerts
 class NotificationManager: NotificationServiceProtocol {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = NotificationManager()
 
     // Track previous session percentage per profile to detect resets

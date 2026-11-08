@@ -6,6 +6,8 @@ enum Page: String, CaseIterable { case tray = "Tray", files = "Files", clipboard
 
 @Observable
 final class ShelfModel {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     var isOpen = false
     var page: Page = .tray
     var openedByHover = false
@@ -138,16 +140,22 @@ struct ShelfNotchGeometry: Equatable {
 }
 
 final class ShelfPanel: NSPanel {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     override var canBecomeKey: Bool { true }   // the clipboard search field needs typing
 }
 
 /// Accepts the first click even though Top Shelf is never the active app.
 final class FirstClickHostingView<V: View>: NSHostingView<V> {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
 /// Reports the mouse while it is over the panel, also when another app is active.
 final class HoverView: NSView {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     var onMove: (NSPoint) -> Void = { _ in }
     var onExit: () -> Void = {}
     override func updateTrackingAreas() {
@@ -162,6 +170,8 @@ final class HoverView: NSView {
 }
 
 final class ShelfController {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private let model: ShelfModel
     private let panel: ShelfPanel
     private var screen: NSScreen?
@@ -279,6 +289,8 @@ final class ShelfController {
 
 /// Hover opening and closing, apart from the window so the self-test can drive it.
 final class HoverLogic {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private let model: ShelfModel
     private var openWork: DispatchWorkItem?
     private var closeWork: DispatchWorkItem?

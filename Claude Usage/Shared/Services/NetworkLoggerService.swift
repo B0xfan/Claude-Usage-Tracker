@@ -9,6 +9,8 @@ import Foundation
 import Combine
 
 final class NetworkLoggerService: ObservableObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = NetworkLoggerService()
 
     @Published private(set) var session: NetworkLoggingSession
