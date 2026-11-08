@@ -116,9 +116,9 @@ final class KeepAwakeShortcutTests: XCTestCase {
         let image = NSImage(contentsOf: lightURL)!
         let bitmap = NSBitmapImageRep(data: image.tiffRepresentation!)!
         let pixel = bitmap.colorAt(x: 20, y: 20)!.usingColorSpace(.sRGB)!
-        XCTAssertGreaterThan(pixel.redComponent, 0.95)
-        XCTAssertGreaterThan(pixel.greenComponent, 0.95)
-        XCTAssertGreaterThan(pixel.blueComponent, 0.95)
+        XCTAssertGreaterThan(pixel.redComponent, 0.8, "light, not dark (non-Retina cloud Macs draw this spot about 0.86)")
+        XCTAssertGreaterThan(pixel.greenComponent, 0.8, "light, not dark (non-Retina cloud Macs draw this spot about 0.86)")
+        XCTAssertGreaterThan(pixel.blueComponent, 0.8, "light, not dark (non-Retina cloud Macs draw this spot about 0.86)")
     }
 
     func testModifierRuleAndRecordingPreviewStates() throws {

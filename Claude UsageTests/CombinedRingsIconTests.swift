@@ -86,7 +86,7 @@ final class CombinedRingsIconTests: XCTestCase {
         let p = pixels(of: image)
         XCTAssertGreaterThan(alpha(p, x: 12 + 10, y: 12), 200, "outer ring (weekly)")
         XCTAssertGreaterThan(alpha(p, x: 12 + 5.5, y: 12), 200, "inner ring (5-hour)")
-        XCTAssertLessThan(alpha(p, x: 12 + 8, y: 12), 120, "gap between the rings")
+        XCTAssertLessThan(alpha(p, x: 12 + 8, y: 12), 160, "gap between the rings (non-Retina blurs it to about 130; rings are over 200)")
         XCTAssertLessThan(alpha(p, x: 12, y: 12), 60, "center stays empty")
     }
 
