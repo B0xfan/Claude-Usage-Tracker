@@ -10,6 +10,8 @@ import Combine
 
 /// Manages multiple menu bar status items for different metrics
 final class StatusBarUIManager {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     // Dictionary to hold multiple status items keyed by metric type (single profile mode)
     private var statusItems: [MenuBarMetricType: NSStatusItem] = [:]
 
@@ -63,6 +65,22 @@ final class StatusBarUIManager {
     // MARK: - Initialization
 
     init() {}
+
+    private var keepAwakeController: KeepAwakeController?
+    private var menuBarIsDark = false
+    private var keepAwakeImage: NSImage? {
+        guard keepAwakeController?.isActive == true else { return nil }
+        return keepAwakeController?.menuBarAccessoryImage(isDarkMode: menuBarIsDark)
+    }
+    private func keepAwakeToolTip() -> String? {
+        guard let controller = keepAwakeController, controller.isActive else { return nil }
+        return controller.isPaused ? "Keep awake paused while locked" : "Keep awake: \(controller.popupTime(at: Date().timeIntervalSinceReferenceDate))"
+    }
+    private func updateKeepAwakeAppearance(for button: NSStatusBarButton, isDark: Bool) {
+        keepAwakeController = KeepAwakeController.shared
+        menuBarIsDark = isDark
+        button.toolTip = keepAwakeToolTip()
+    }
 
     // MARK: - Setup
 
@@ -501,14 +519,16 @@ final class StatusBarUIManager {
                 )
             }
 
+            updateKeepAwakeAppearance(for: button, isDark: menuBarIsDark)
+            let keepAwake = profile.id == activeProfileId ? keepAwakeImage : nil
             let finalImage: NSImage
             if profile.id == activeProfileId && config.showActiveProfileIndicator {
                 let underlinedImage = addGreenUnderline(to: image)
                 underlinedImage.isTemplate = false
-                finalImage = underlinedImage
+                finalImage = renderer.appendingKeepAwakeAccessory(keepAwake, to: underlinedImage)
             } else {
                 image.isTemplate = useMonochrome && !config.showPaceMarker
-                finalImage = image
+                finalImage = renderer.appendingKeepAwakeAccessory(keepAwake, to: image)
             }
 
             // macOS 26 (Tahoe) crash fix: with NSStatusItem.variableLength, AppKit
@@ -622,8 +642,12 @@ final class StatusBarUIManager {
                 showNextSessionTime: metricConfig.showNextSessionTime
             )
 
-            image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
-            button.image = image
+            updateKeepAwakeAppearance(for: button, isDark: menuBarIsDark)
+            let finalImage = renderer.appendingKeepAwakeAccessory(keepAwakeImage, to: image)
+            if keepAwakeImage == nil, metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
+                finalImage.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+            }
+            button.image = finalImage
         }
     }
 
@@ -661,8 +685,12 @@ final class StatusBarUIManager {
             showNextSessionTime: metricConfig.showNextSessionTime
         )
 
-        image.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
-        button.image = image
+        updateKeepAwakeAppearance(for: button, isDark: menuBarIsDark)
+        let finalImage = renderer.appendingKeepAwakeAccessory(keepAwakeImage, to: image)
+        if keepAwakeImage == nil, metricConfig.iconStyle != .rings {  // "Both Rings" sets its own template flag
+            finalImage.isTemplate = config.colorMode == .monochrome && !config.showPaceMarker
+        }
+        button.image = finalImage
     }
 
     /// Mirrors the auth fallback used for actual usage fetches so UI gating does

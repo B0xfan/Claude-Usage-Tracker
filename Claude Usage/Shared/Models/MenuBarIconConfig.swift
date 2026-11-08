@@ -192,7 +192,7 @@ struct MetricIconConfig: Codable, Equatable {
         MetricIconConfig(
             metricType: .session,
             isEnabled: true,
-            iconStyle: .battery,
+            iconStyle: .rings,
             order: 0,
             showNextSessionTime: false
         )
@@ -432,10 +432,16 @@ struct MenuBarIconConfiguration: Codable, Equatable {
     }
 
     /// Get enabled metrics sorted by order
+    /// When session or week uses the "Both Rings" style, that one item shows both
+    /// numbers, so the other of the two is left out of the menu bar.
     var enabledMetrics: [MetricIconConfig] {
-        metrics
+        let enabled = metrics
             .filter { $0.isEnabled }
             .sorted { $0.order < $1.order }
+        guard let combined = enabled.first(where: { $0.metricType != .api && $0.iconStyle == .rings }) else {
+            return enabled
+        }
+        return enabled.filter { $0.metricType == .api || $0.metricType == combined.metricType }
     }
 
     /// Get config for specific metric type

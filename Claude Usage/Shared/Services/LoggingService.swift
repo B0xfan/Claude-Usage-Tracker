@@ -11,6 +11,8 @@ import os.log
 /// Centralized logging service using os.log
 /// Provides consistent logging across the application
 final class LoggingService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = LoggingService()
 
     private let subsystem = Bundle.main.bundleIdentifier ?? "com.claudeusage"

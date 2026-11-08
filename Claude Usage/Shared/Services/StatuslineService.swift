@@ -4,6 +4,8 @@ import Foundation
 /// This service handles installation, configuration, and management of the statusline feature
 /// for Claude Code terminal integration.
 class StatuslineService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = StatuslineService()
 
     private init() {}

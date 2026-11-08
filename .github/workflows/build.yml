@@ -22,6 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Every Class Has Its Own Deinit
+        run: python3 -I .github/scripts/check_explicit_deinit.py "Claude Usage"
+
       - name: Select Xcode 26.0.1
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
 
@@ -50,9 +53,17 @@ jobs:
             -configuration Debug \
             -derivedDataPath build \
             -destination "platform=macOS" \
+            -resultBundlePath Tests.xcresult \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Show Test Failure Messages
+        if: failure()
+        run: |
+          test -d Tests.xcresult || exit 0
+          xcrun xcresulttool get test-results tests --path Tests.xcresult --format json > Tests.json
+          node -e 'const r=require("./Tests.json"); function walk(n,t){ if(n.nodeType==="Test Case") t=n.name; if(n.nodeType==="Failure Message") console.log(t+": "+n.name); (n.children||[]).forEach(c=>walk(c,t)); }; r.testNodes.forEach(n=>walk(n,""))'
 
       - name: Build Release
         run: |
@@ -68,7 +79,7 @@ jobs:
       - name: Create App Bundle Artifact
         run: |
           mkdir -p artifacts
-          cp -R "build/Build/Products/Release/Claude Usage.app" artifacts/
+          cp -R "build/Build/Products/Release/Usage Shelf.app" artifacts/
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4

@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    English (Base Language)
    Created by Claude Code on 2025-12-27.
@@ -9,10 +9,10 @@
 /* ==================== */
 /* MARK: - App Info */
 /* ==================== */
-"app.name" = "Claude Usage Tracker";
-"app.window.main" = "Claude Usage";
+"app.name" = "Usage Shelf";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "Settings";
-"app.window.github_prompt" = "Support Claude Usage Tracker";
+"app.window.github_prompt" = "Support Usage Shelf";
 
 /* ==================== */
 /* MARK: - Common Actions */
@@ -96,7 +96,7 @@
 /* MARK: - General Settings */
 /* ==================== */
 "general.launch_at_login" = "Launch at login";
-"general.launch_at_login.description" = "Automatically start Claude Usage Tracker when you log in to your Mac";
+"general.launch_at_login.description" = "Automatically start Usage Shelf when you log in to your Mac";
 "general.refresh_interval" = "Refresh Interval";
 "general.refresh_interval.description" = "Shorter intervals provide more real-time data but may impact battery life";
 "general.check_overage_limit" = "Check Extra Usage Limit";
@@ -140,7 +140,7 @@
 /* ==================== */
 /* MARK: - Setup Wizard */
 /* ==================== */
-"setup.welcome.title" = "Welcome to Claude Usage Tracker";
+"setup.welcome.title" = "Welcome to Usage Shelf";
 "setup.welcome.subtitle" = "Configure your API access to start tracking usage";
 "setup.step.get_session_key" = "Get Your Session Key";
 "setup.step.get_session_key.description" = "You'll need to extract your session key from claude.ai";
@@ -175,7 +175,6 @@
 "about.report_issue" = "Report Issue";
 "about.send_feedback" = "Send Feedback";
 "about.mit_license" = "MIT License • Open Source";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Updates Settings */
@@ -287,7 +286,7 @@
 /* ==================== */
 /* MARK: - GitHub Star Prompt */
 /* ==================== */
-"github.enjoy_app" = "Enjoying Claude Usage Tracker?";
+"github.enjoy_app" = "Enjoying Usage Shelf?";
 "github.star_description" = "If this app has been helpful, please consider starring it on GitHub! It helps others discover the project and motivates continued development.";
 "github.star_button" = "Star on GitHub";
 "github.maybe_later" = "Maybe Later";
@@ -676,8 +675,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -823,19 +820,6 @@
 /* ==================== */
 /* MARK: - Support View */
 /* ==================== */
-"support.title" = "Support the Project";
-"support.subtitle" = "Claude Usage Tracker is free and open source";
-"support.all_features_free" = "All Features Are Free";
-"support.all_features_desc" = "Every feature in this app is completely free to use. No premium tiers, no paywalls, no subscriptions.";
-"support.open_source" = "Open Source";
-"support.open_source_desc" = "The source code is publicly available on GitHub. You can inspect, modify, and contribute to the project.";
-"support.no_tracking" = "No Tracking";
-"support.no_tracking_desc" = "Your privacy matters. No analytics, no telemetry, no data collection. Everything stays on your Mac.";
-"support.message" = "If you find this app useful, consider supporting its development";
-"support.buy_coffee" = "Buy Me a Coffee";
-"support.footer" = "Your support helps keep this project alive and growing";
-"support.also_support" = "You can also support by";
-"support.star_github" = "Starring on GitHub";
 
 /* ==================== */
 /* MARK: - Debug View */
@@ -1018,8 +1002,6 @@
 "notch.server.retry" = "Retry";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "This spot is available for sponsors";
-"sponsor.slot_cta" = "Get in touch";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Codex Account";
@@ -1084,8 +1066,3 @@
 "launcher.verify" = "Check Login";
 "launcher.path_warning" = "~/.local/bin is not on your PATH. Add this line to your shell profile:";
 "launcher.install_failed" = "Couldn't install the launcher: %@";
-"support.popup_title" = "Hi, I'm Hamed 👋";
-"support.popup_later" = "Maybe later";
-"support.popup_signature" = "the one-person team behind Claude Usage";
-"support.popup_body" = "Free, open source, built by one person — no ads, no tracking. If it has ever saved you from burning a session limit, a coffee keeps it going.";
-"support.popup_days" = "Watching your limits for %d days — always free";

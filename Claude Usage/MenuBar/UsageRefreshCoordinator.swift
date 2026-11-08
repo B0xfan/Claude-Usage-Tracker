@@ -10,6 +10,8 @@ import Combine
 
 /// Coordinates usage data refresh from API services
 final class UsageRefreshCoordinator {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private var refreshTimer: Timer?
     private var refreshIntervalObserver: NSKeyValueObservation?
 

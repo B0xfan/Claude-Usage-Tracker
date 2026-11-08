@@ -3,6 +3,8 @@ import SwiftUI
 import Combine
 
 class MenuBarManager: NSObject, ObservableObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private var statusItem: NSStatusItem?  // Legacy - kept for backwards compatibility
     private var statusBarUIManager: StatusBarUIManager?
     private var refreshTimer: Timer?
@@ -52,12 +54,6 @@ class MenuBarManager: NSObject, ObservableObject {
     // Settings window reference
     private var settingsWindow: NSWindow?
 
-    // GitHub star prompt window reference
-    private var githubPromptWindow: NSWindow?
-
-    // Feedback prompt window reference
-    private var feedbackWindow: NSWindow?
-
 
     // Track which button is currently showing the popover
     private weak var currentPopoverButton: NSStatusBarButton?
@@ -77,6 +73,9 @@ class MenuBarManager: NSObject, ObservableObject {
     private let networkMonitor = NetworkMonitor.shared
     private let profileManager = ProfileManager.shared
     private let autoStartService = AutoStartSessionService.shared
+    let keepAwake = KeepAwakeController.shared
+    let cleaningMode = CleaningModeController.shared
+    private var cleaningSettingsObserver: NSObjectProtocol?
 
     // Combine cancellables for profile observation
     private var cancellables = Set<AnyCancellable>()
@@ -236,6 +235,14 @@ class MenuBarManager: NSObject, ObservableObject {
         // Setup wake-from-sleep observer for auto-refresh
         setupWakeObserver()
 
+        // Keep awake listens for lock, power, display and app changes. Pointer permission
+        // is only checked, never requested at launch.
+        keepAwake.startListening()
+        keepAwake.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateAllStatusBarIcons() }
+            .store(in: &cancellables)
+
         // Setup global keyboard shortcuts
         setupShortcuts()
 
@@ -255,11 +262,29 @@ class MenuBarManager: NSObject, ObservableObject {
         shortcutManager.onNextProfile = { [weak self] in
             self?.switchToNextProfile()
         }
+        shortcutManager.onToggleKeepAwake = { [weak self] in
+            self?.keepAwake.toggle()
+        }
+        shortcutManager.onStartCleaningMode = { [weak self] in
+            self?.startCleaningMode()
+        }
         shortcutManager.startListening()
+        cleaningMode.startListening()
+        registerCleaningSettingsObserver()
+        cleaningMode.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, self.cleaningMode.shouldOpenSettings else { return }
+                self.presentCleaningSettings()
+            }
+        .store(in: &cancellables)
     }
 
     func cleanup() {
         ShortcutManager.shared.stopListening()
+        cleaningMode.cleanup()
+        if let cleaningSettingsObserver { NotificationCenter.default.removeObserver(cleaningSettingsObserver) }
+        keepAwake.cleanup()
         refreshTimer?.invalidate()
         refreshTimer = nil
         networkMonitor.stopMonitoring()
@@ -627,9 +652,23 @@ class MenuBarManager: NSObject, ObservableObject {
     private func showContextMenu(for button: NSStatusBarButton?) {
         let menu = NSMenu()
 
+        let keepAwakeItem = NSMenuItem(title: "Keep awake", action: #selector(toggleKeepAwake), keyEquivalent: "")
+        keepAwakeItem.target = self
+        keepAwakeItem.state = keepAwake.isActive ? .on : .off
+        menu.addItem(keepAwakeItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let refreshItem = NSMenuItem(title: "common.refresh".localized, action: #selector(contextMenuRefresh), keyEquivalent: "")
         refreshItem.target = self
         menu.addItem(refreshItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        let cleaningItem = NSMenuItem(title: cleaningMode.isActive ? "Cleaning Mode is on" : "Start Cleaning Mode", action: #selector(startCleaningMode), keyEquivalent: "")
+        cleaningItem.target = self
+        cleaningItem.isEnabled = !cleaningMode.isActive
+        menu.addItem(cleaningItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -651,6 +690,44 @@ class MenuBarManager: NSObject, ObservableObject {
                 let screenRect = window.convertToScreen(buttonRect)
                 menu.popUp(positioning: nil, at: NSPoint(x: screenRect.origin.x, y: screenRect.origin.y), in: nil)
             }
+        }
+    }
+
+    @objc private func toggleKeepAwake() {
+        keepAwake.toggle()
+    }
+
+    @objc private func startCleaningMode() {
+        // Defer capture until AppKit has delivered the initiating mouse release.
+        let result = cleaningMode.start(now: -1)
+        if result != .started || cleaningMode.shouldOpenSettings { presentCleaningSettings() }
+    }
+
+    private func presentCleaningSettings() {
+        cleaningMode.consumeSettingsRequest()
+        closePopoverOrWindow()
+        NSApp.setActivationPolicy(.regular)
+        let window: NSWindow
+        if let existing = settingsWindow {
+            window = existing
+        } else {
+            let created = SettingsWindowBuilder.makeWindow(size: Constants.WindowSizes.settingsWindow)
+            created.title = "Usage Shelf Settings"
+            created.center()
+            created.isReleasedWhenClosed = false
+            created.delegate = self
+            settingsWindow = created
+            window = created
+        }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        NotificationCenter.default.post(name: .selectSettingsSection, object: SettingsSection.cleaningMode)
+    }
+
+    private func registerCleaningSettingsObserver() {
+        guard cleaningSettingsObserver == nil else { return }
+        cleaningSettingsObserver = NotificationCenter.default.addObserver(forName: .showCleaningModeSettings, object: nil, queue: .main) { [weak self] _ in
+            self?.presentCleaningSettings()
         }
     }
 
@@ -1617,7 +1694,7 @@ class MenuBarManager: NSObject, ObservableObject {
 
             // Create and show the settings window
             let window = SettingsWindowBuilder.makeWindow(size: Constants.WindowSizes.settingsWindow)
-            window.title = "Claude Usage - Settings"
+            window.title = "Usage Shelf Settings"
             window.center()
             window.isReleasedWhenClosed = false
             window.delegate = self
@@ -1646,152 +1723,8 @@ class MenuBarManager: NSObject, ObservableObject {
     }
 
     @objc private func quitClicked() {
+        cleaningMode.cleanup()
         NSApplication.shared.terminate(nil)
-    }
-
-    /// Shows the GitHub star prompt window
-    func showGitHubStarPrompt() {
-        // If window already exists, just bring it to front
-        if let existingWindow = githubPromptWindow, existingWindow.isVisible {
-            existingWindow.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        // Temporarily show dock icon for the prompt window
-        NSApp.setActivationPolicy(.regular)
-
-        // Create the GitHub star prompt view
-        let promptView = GitHubStarPromptView(
-            onStar: { [weak self] in
-                self?.handleGitHubStarClick()
-            },
-            onMaybeLater: { [weak self] in
-                self?.handleMaybeLaterClick()
-            },
-            onDontAskAgain: { [weak self] in
-                self?.handleDontAskAgainClick()
-            }
-        )
-
-        let hostingController = NSHostingController(rootView: promptView)
-
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = ""
-        window.styleMask = [.titled, .closable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.setContentSize(NSSize(width: 300, height: 145))
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.isRestorable = false
-        window.level = .floating
-        window.delegate = self
-
-        // Store reference
-        githubPromptWindow = window
-
-        // Mark that we've shown the prompt
-        dataStore.saveLastGitHubStarPromptDate(Date())
-
-        // Show the window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
-    private func handleGitHubStarClick() {
-        // Open GitHub repository
-        if let url = URL(string: Constants.githubRepoURL) {
-            NSWorkspace.shared.open(url)
-        }
-
-        // Mark as starred
-        dataStore.saveHasStarredGitHub(true)
-
-        // Close the prompt window
-        githubPromptWindow?.close()
-        githubPromptWindow = nil
-
-        // Hide dock icon
-        NSApp.setActivationPolicy(.accessory)
-    }
-
-    private func handleMaybeLaterClick() {
-        // Just close the window - the prompt will show again after the reminder interval
-        githubPromptWindow?.close()
-        githubPromptWindow = nil
-
-        // Hide dock icon
-        NSApp.setActivationPolicy(.accessory)
-    }
-
-    private func handleDontAskAgainClick() {
-        // Mark to never show again
-        dataStore.saveNeverShowGitHubPrompt(true)
-
-        // Close the prompt window
-        githubPromptWindow?.close()
-        githubPromptWindow = nil
-
-        // Hide dock icon
-        NSApp.setActivationPolicy(.accessory)
-    }
-
-    // MARK: - Feedback Prompt
-
-    /// Shows the feedback collection prompt window
-    func showFeedbackPrompt() {
-        if let existingWindow = feedbackWindow, existingWindow.isVisible {
-            existingWindow.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        NSApp.setActivationPolicy(.regular)
-
-        let promptView = FeedbackPromptView(
-            onSubmit: { [weak self] _, _, _, _ in
-                SharedDataStore.shared.saveHasSubmittedFeedback(true)
-                // Close after a brief delay to show the thanks state
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    self?.closeFeedbackWindow()
-                }
-            },
-            onRemindLater: { [weak self] in
-                SharedDataStore.shared.saveLastFeedbackPromptDate(Date())
-                self?.closeFeedbackWindow()
-            },
-            onDontAskAgain: { [weak self] in
-                SharedDataStore.shared.saveNeverShowFeedbackPrompt(true)
-                self?.closeFeedbackWindow()
-            }
-        )
-
-        let hostingController = NSHostingController(rootView: promptView)
-
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = ""
-        window.styleMask = [.titled, .closable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.setContentSize(NSSize(width: 380, height: 420))
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.isRestorable = false
-        window.level = .floating
-        window.delegate = self
-
-        feedbackWindow = window
-        SharedDataStore.shared.saveLastFeedbackPromptDate(Date())
-
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
-    private func closeFeedbackWindow() {
-        feedbackWindow?.close()
-        feedbackWindow = nil
-        NSApp.setActivationPolicy(.accessory)
     }
 }
 
@@ -1879,10 +1812,6 @@ extension MenuBarManager: NSWindowDelegate {
             } else if window == detachedWindow {
                 // Clear detached window reference when closed
                 detachedWindow = nil
-            } else if window == githubPromptWindow {
-                // Hide dock icon again when GitHub prompt window closes
-                NSApp.setActivationPolicy(.accessory)
-                githubPromptWindow = nil
             }
         }
     }

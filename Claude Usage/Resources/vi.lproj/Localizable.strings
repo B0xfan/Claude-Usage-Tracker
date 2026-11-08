@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    Vietnamese (Tiếng Việt)
    Created by Claude Code on 2026-07-24.
@@ -9,10 +9,10 @@
 /* ==================== */
 /* MARK: - App Info */
 /* ==================== */
-"app.name" = "Claude Usage Tracker";
-"app.window.main" = "Mức sử dụng Claude";
+"app.name" = "Usage Shelf";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "Cài đặt";
-"app.window.github_prompt" = "Ủng hộ Claude Usage Tracker";
+"app.window.github_prompt" = "Ủng hộ Usage Shelf";
 
 /* ==================== */
 /* MARK: - Common Actions */
@@ -96,7 +96,7 @@
 /* MARK: - General Settings */
 /* ==================== */
 "general.launch_at_login" = "Khởi chạy khi đăng nhập";
-"general.launch_at_login.description" = "Tự động khởi chạy Claude Usage Tracker khi bạn đăng nhập vào Mac";
+"general.launch_at_login.description" = "Tự động khởi chạy Usage Shelf khi bạn đăng nhập vào Mac";
 "general.refresh_interval" = "Chu kỳ làm mới";
 "general.refresh_interval.description" = "Chu kỳ ngắn hơn cho dữ liệu theo thời gian thực chính xác hơn nhưng có thể ảnh hưởng đến thời lượng pin";
 "general.check_overage_limit" = "Kiểm tra giới hạn mức dùng thêm";
@@ -140,7 +140,7 @@
 /* ==================== */
 /* MARK: - Setup Wizard */
 /* ==================== */
-"setup.welcome.title" = "Chào mừng đến với Claude Usage Tracker";
+"setup.welcome.title" = "Chào mừng đến với Usage Shelf";
 "setup.welcome.subtitle" = "Cấu hình quyền truy cập API để bắt đầu theo dõi mức sử dụng";
 "setup.step.get_session_key" = "Lấy khoá phiên của bạn";
 "setup.step.get_session_key.description" = "Bạn cần trích xuất khoá phiên của mình từ claude.ai";
@@ -175,7 +175,6 @@
 "about.report_issue" = "Báo cáo sự cố";
 "about.send_feedback" = "Gửi phản hồi";
 "about.mit_license" = "Giấy phép MIT • Mã nguồn mở";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Updates Settings */
@@ -287,7 +286,7 @@
 /* ==================== */
 /* MARK: - GitHub Star Prompt */
 /* ==================== */
-"github.enjoy_app" = "Bạn thấy Claude Usage Tracker hữu ích?";
+"github.enjoy_app" = "Bạn thấy Usage Shelf hữu ích?";
 "github.star_description" = "Nếu ứng dụng này hữu ích với bạn, hãy cân nhắc gắn sao cho nó trên GitHub! Điều này giúp người khác khám phá dự án và khích lệ việc phát triển liên tục.";
 "github.star_button" = "Gắn sao trên GitHub";
 "github.maybe_later" = "Để sau";
@@ -676,8 +675,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -823,19 +820,6 @@
 /* ==================== */
 /* MARK: - Support View */
 /* ==================== */
-"support.title" = "Ủng hộ dự án";
-"support.subtitle" = "Claude Usage Tracker miễn phí và mã nguồn mở";
-"support.all_features_free" = "Mọi tính năng đều miễn phí";
-"support.all_features_desc" = "Mọi tính năng trong ứng dụng này đều hoàn toàn miễn phí. Không có gói cao cấp, không tường phí, không đăng ký trả phí.";
-"support.open_source" = "Mã nguồn mở";
-"support.open_source_desc" = "Mã nguồn được công khai trên GitHub. Bạn có thể kiểm tra, chỉnh sửa và đóng góp cho dự án.";
-"support.no_tracking" = "Không theo dõi";
-"support.no_tracking_desc" = "Quyền riêng tư của bạn rất quan trọng. Không phân tích, không đo từ xa, không thu thập dữ liệu. Mọi thứ đều nằm trên Mac của bạn.";
-"support.message" = "Nếu bạn thấy ứng dụng này hữu ích, hãy cân nhắc ủng hộ việc phát triển nó";
-"support.buy_coffee" = "Mời tôi một ly cà phê";
-"support.footer" = "Sự ủng hộ của bạn giúp dự án này tiếp tục tồn tại và phát triển";
-"support.also_support" = "Bạn cũng có thể ủng hộ bằng cách";
-"support.star_github" = "Gắn sao trên GitHub";
 
 /* ==================== */
 /* MARK: - Debug View */
@@ -1018,8 +1002,6 @@
 "notch.server.retry" = "Thử lại";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "Vị trí này dành cho nhà tài trợ";
-"sponsor.slot_cta" = "Liên hệ ngay";
 
 // MARK: - Providers & Codex (v3.3.0)
 "codex.cli_detected" = "Đã phát hiện Codex CLI";
@@ -1086,8 +1068,3 @@
 "launcher.install_failed" = "Không thể cài trình khởi chạy: %@";
 
 // MARK: - Terminal Launcher / Support
-"support.popup_title" = "Chào, mình là Hamed 👋";
-"support.popup_signature" = "đội một người đứng sau Claude Usage";
-"support.popup_body" = "Miễn phí, mã nguồn mở, do một người xây dựng — không quảng cáo, không theo dõi. Nếu nó từng giúp bạn khỏi lãng phí giới hạn phiên, một ly cà phê sẽ giúp nó tiếp tục.";
-"support.popup_days" = "Đồng hành cùng giới hạn của bạn %d ngày — luôn miễn phí";
-"support.popup_later" = "Để sau";

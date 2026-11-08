@@ -28,6 +28,8 @@ import Foundation
 /// dirs — whichever Claude Code instance refreshes second gets invalid_grant
 /// and a forced re-login (the exact failure mode #290 eliminated).
 class TerminalLauncherService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = TerminalLauncherService()
 
     private let fileManager: FileManager

@@ -9,6 +9,8 @@ import Foundation
 import Combine
 
 final class NetworkLoggerService: ObservableObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = NetworkLoggerService()
 
     @Published private(set) var session: NetworkLoggingSession
@@ -24,7 +26,7 @@ final class NetworkLoggerService: ObservableObject {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first!
-        let appDirectory = appSupport.appendingPathComponent("Claude Usage")
+        let appDirectory = appSupport.appendingPathComponent(LegacyDataMigration.newSupportFolderName)
 
         // Create directory if needed
         try? FileManager.default.createDirectory(
@@ -170,7 +172,7 @@ final class NetworkLoggerService: ObservableObject {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first!
-        let appDirectory = appSupport.appendingPathComponent("Claude Usage")
+        let appDirectory = appSupport.appendingPathComponent(LegacyDataMigration.newSupportFolderName)
         let url = appDirectory.appendingPathComponent("network_logs.json")
 
         guard FileManager.default.fileExists(atPath: url.path),

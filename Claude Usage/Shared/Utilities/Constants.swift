@@ -65,6 +65,8 @@ enum Constants {
 
     // Claude Code notch HUD (hook listener + display)
     enum NotchHUD {
+        /// John's Top Shelf (TopShelf/) is the notch display; the built-in one stays off. Set to false to bring it back.
+        static let replacedByTopShelf = true
         static let host = "127.0.0.1"
         static let port: UInt16 = 19847
         /// Base URL prefix used in installed hook URLs; also matched by the
@@ -162,9 +164,6 @@ enum Constants {
         static let critical: Double = 95.0
     }
 
-    // GitHub repository
-    static let githubRepoURL = "https://github.com/hamed-elfayome/Claude-Usage-Tracker"
-
     // GitHub star prompt timing (in seconds)
     enum GitHubPromptTiming {
         static let initialDelay: TimeInterval = 24 * 60 * 60  // 1 day
@@ -201,12 +200,5 @@ enum Constants {
         static let popoverSize = NSSize(width: 320, height: 600)
         /// Height of the system NSPopover arrow (macOS standard ~13pt)
         static let popoverArrowHeight: CGFloat = 13
-    }
-
-    // GitHub Repository Info
-    enum GitHub {
-        static let owner = "hamed-elfayome"
-        static let repo = "Claude-Usage-Tracker"
-        static let repoURL = "https://github.com/\(owner)/\(repo)"
     }
 }

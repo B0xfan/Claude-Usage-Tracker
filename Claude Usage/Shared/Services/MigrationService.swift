@@ -9,6 +9,8 @@ import Foundation
 
 /// Handles data migration from App Group container to standard container
 class MigrationService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = MigrationService()
 
     private init() {}

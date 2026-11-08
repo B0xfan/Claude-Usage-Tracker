@@ -7,6 +7,7 @@ enum MenuBarIconStyle: String, CaseIterable, Codable {
     case percentageOnly
     case icon
     case compact
+    case rings   // One icon for both: weekly outer ring, 5-hour inner ring
 
     var displayName: String {
         switch self {
@@ -20,6 +21,8 @@ enum MenuBarIconStyle: String, CaseIterable, Codable {
             return "Icon with Bar"
         case .compact:
             return "Compact"
+        case .rings:
+            return "Both Rings"
         }
     }
 
@@ -35,12 +38,16 @@ enum MenuBarIconStyle: String, CaseIterable, Codable {
             return "Circular ring with progress indicator"
         case .compact:
             return "Minimalist dot indicator"
+        case .rings:
+            return "One icon: weekly outer ring, 5-hour inner ring"
         }
     }
 }
 
 /// Manages shared data storage between app and widgets using App Groups
 class DataStore: StorageProvider {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = DataStore()
 
     private let defaults: UserDefaults

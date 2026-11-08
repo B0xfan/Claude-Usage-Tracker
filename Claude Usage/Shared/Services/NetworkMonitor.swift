@@ -11,6 +11,8 @@ import Network
 /// Monitors network connectivity using NWPathMonitor
 /// Provides callback when network becomes available
 final class NetworkMonitor {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = NetworkMonitor()
 
     private let monitor: NWPathMonitor

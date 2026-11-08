@@ -8,6 +8,8 @@
 import Foundation
 
 final class CodexUsageProvider: UsageProviderService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = CodexUsageProvider()
 
     let provider: Provider = .codex

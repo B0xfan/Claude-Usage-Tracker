@@ -9,6 +9,8 @@ import Foundation
 
 /// Manages app-wide settings that are shared across all profiles
 class SharedDataStore {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = SharedDataStore()
 
     private let defaults: UserDefaults
@@ -70,6 +72,8 @@ class SharedDataStore {
         static let shortcutRefresh = "shortcutRefresh"
         static let shortcutOpenSettings = "shortcutOpenSettings"
         static let shortcutNextProfile = "shortcutNextProfile"
+        static let shortcutKeepAwake = "shortcutKeepAwake"
+        static let shortcutCleaningMode = "shortcutCleaningMode"
 
         // Auto-Switch Profile
         static let autoSwitchProfileEnabled = "autoSwitchProfileEnabled"
@@ -594,6 +598,8 @@ class SharedDataStore {
         case .refresh: return Keys.shortcutRefresh
         case .openSettings: return Keys.shortcutOpenSettings
         case .nextProfile: return Keys.shortcutNextProfile
+        case .keepAwake: return Keys.shortcutKeepAwake
+        case .cleaningMode: return Keys.shortcutCleaningMode
         }
     }
 

@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    Japanese (日本語)
    Created by Claude Code on 2026-01-05.
@@ -10,7 +10,7 @@
 /* MARK: - App Info */
 /* ==================== */
 "app.name" = "Claude使用状況トラッカー";
-"app.window.main" = "Claude使用状況";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "設定";
 "app.window.github_prompt" = "Claude使用状況トラッカーをサポート";
 
@@ -168,7 +168,6 @@
 "about.report_issue" = "問題を報告";
 "about.send_feedback" = "フィードバックを送信";
 "about.mit_license" = "MITライセンス • オープンソース";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Updates Settings */
@@ -701,8 +700,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -819,19 +816,6 @@
 "history.export.json" = "JSONでエクスポート";
 "history.export.csv" = "CSVでエクスポート";
 "history.chart.now" = "現在";
-"support.title" = "プロジェクトを支援";
-"support.subtitle" = "Claude使用状況トラッカーは無料でオープンソースです";
-"support.all_features_free" = "すべての機能が無料";
-"support.all_features_desc" = "このアプリのすべての機能は完全に無料です。プレミアム層、ペイウォール、サブスクリプションはありません。";
-"support.open_source" = "オープンソース";
-"support.open_source_desc" = "ソースコードはGitHubで公開されています。検査、変更、プロジェクトへの貢献が可能です。";
-"support.no_tracking" = "トラッキングなし";
-"support.no_tracking_desc" = "あなたのプライバシーは重要です。分析、テレメトリー、データ収集はありません。すべてMac上に留まります。";
-"support.message" = "このアプリが役立つと思われる場合は、開発を支援することをご検討ください";
-"support.buy_coffee" = "コーヒーを奢る";
-"support.footer" = "あなたのサポートがこのプロジェクトを生き生きと成長させ続けます";
-"support.also_support" = "次の方法でもサポートできます";
-"support.star_github" = "GitHubでスター";
 "debug.title" = "デバッグツール";
 "debug.subtitle" = "トラブルシューティングと診断のためのネットワークリクエストログ";
 "debug.network_logger" = "ネットワークリクエストロガー";
@@ -1022,8 +1006,6 @@
 "menubar.total" = "合計";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "スポンサー募集中のスペースです";
-"sponsor.slot_cta" = "お問い合わせ";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Codexアカウント";
@@ -1088,8 +1070,3 @@
 "launcher.verify" = "ログインを確認";
 "launcher.path_warning" = "~/.local/bin が PATH にありません。シェルのプロファイルに次の行を追加してください:";
 "launcher.install_failed" = "ランチャーをインストールできませんでした: %@";
-"support.popup_title" = "こんにちは、Hamed です 👋";
-"support.popup_later" = "また今度";
-"support.popup_signature" = "Claude Usage を一人で作っています";
-"support.popup_body" = "無料・オープンソース・個人開発。広告もトラッキングもありません。セッション上限の浪費を防いだことがあるなら、一杯のコーヒーが開発を支えます。";
-"support.popup_days" = "あなたの上限を見守って %d 日 — ずっと無料";

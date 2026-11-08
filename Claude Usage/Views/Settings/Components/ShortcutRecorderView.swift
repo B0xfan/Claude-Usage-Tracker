@@ -9,6 +9,11 @@ import SwiftUI
 
 struct ShortcutRecorderView: View {
     @Binding var keyCombo: KeyCombo?
+    var previewRecording = false
+
+    static func accepts(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        !modifiers.intersection([.command, .option, .control, .shift]).isEmpty && ![54, 55, 56, 57, 58, 59, 60, 61, 62, 63].contains(keyCode)
+    }
     @State private var isRecording = false
     @State private var localMonitor: Any?
 
@@ -16,21 +21,26 @@ struct ShortcutRecorderView: View {
         HStack(spacing: DesignTokens.Spacing.small) {
             // Display area
             Button {
-                if isRecording {
+                if isRecording || previewRecording {
                     stopRecording()
                 } else {
                     startRecording()
                 }
             } label: {
                 HStack(spacing: DesignTokens.Spacing.extraSmall) {
-                    if isRecording {
+                    if isRecording || previewRecording {
                         Text("shortcuts.recording".localized)
                             .font(DesignTokens.Typography.body)
                             .foregroundColor(.accentColor)
                     } else if let combo = keyCombo {
-                        Text(combo.displayString)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.primary)
+                        HStack(spacing: 4) {
+                            ForEach(combo.displayComponents, id: \.self) { component in
+                                Text(component)
+                                    .fixedSize()
+                            }
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.primary)
                     } else {
                         Text("shortcuts.record".localized)
                             .font(DesignTokens.Typography.body)
@@ -42,13 +52,13 @@ struct ShortcutRecorderView: View {
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
-                        .fill(isRecording ? Color.accentColor.opacity(0.1) : DesignTokens.Colors.cardBackground)
+                        .fill((isRecording || previewRecording) ? Color.accentColor.opacity(0.1) : DesignTokens.Colors.cardBackground)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.small)
                         .strokeBorder(
-                            isRecording ? Color.accentColor : DesignTokens.Colors.cardBorder,
-                            lineWidth: isRecording ? 2 : 1
+                            (isRecording || previewRecording) ? Color.accentColor : DesignTokens.Colors.cardBorder,
+                            lineWidth: isRecording || previewRecording ? 2 : 1
                         )
                 )
             }
@@ -118,4 +128,41 @@ struct ShortcutRecorderView: View {
     }
     .padding()
     .frame(width: 300)
+}
+
+enum ShortcutWarningStyle {
+    static func textColor(for scheme: ColorScheme) -> NSColor {
+        scheme == .dark ? .systemOrange : NSColor(red: 0.43, green: 0.20, blue: 0.00, alpha: 1)
+    }
+
+    static func backgroundColor(for scheme: ColorScheme) -> NSColor {
+        let background = scheme == .dark ? NSColor(white: 0.16, alpha: 1) : NSColor(white: 0.97, alpha: 1)
+        guard let foreground = textColor(for: scheme).usingColorSpace(.sRGB),
+              let background = background.usingColorSpace(.sRGB) else { return background }
+        func composite(_ foreground: CGFloat, _ background: CGFloat) -> CGFloat { foreground * 0.08 + background * 0.92 }
+        return NSColor(srgbRed: composite(foreground.redComponent, background.redComponent), green: composite(foreground.greenComponent, background.greenComponent), blue: composite(foreground.blueComponent, background.blueComponent), alpha: 1)
+    }
+
+    static var text: Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let scheme: ColorScheme = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light
+            return textColor(for: scheme)
+        })
+    }
+}
+
+struct ShortcutWarningView: View {
+    let message: String
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(DesignTokens.Typography.caption)
+        .foregroundColor(ShortcutWarningStyle.text)
+        .padding(DesignTokens.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).fill(ShortcutWarningStyle.text.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.small).strokeBorder(ShortcutWarningStyle.text.opacity(0.3)))
+    }
 }

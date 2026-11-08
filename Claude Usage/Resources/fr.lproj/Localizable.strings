@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    French (Français)
    Created by Claude Code on 2025-12-27.
@@ -10,9 +10,9 @@
 /* MARK: - App Info */
 /* ==================== */
 "app.name" = "Suivi d'Utilisation Claude";
-"app.window.main" = "Utilisation de Claude";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "Paramètres";
-"app.window.github_prompt" = "Soutenir Claude Usage Tracker";
+"app.window.github_prompt" = "Soutenir Usage Shelf";
 
 /* ==================== */
 /* MARK: - Common Actions */
@@ -90,7 +90,7 @@
 /* MARK: - General Settings */
 /* ==================== */
 "general.launch_at_login" = "Lancer à la connexion";
-"general.launch_at_login.description" = "Démarrer automatiquement Claude Usage Tracker lors de la connexion à votre Mac";
+"general.launch_at_login.description" = "Démarrer automatiquement Usage Shelf lors de la connexion à votre Mac";
 "general.refresh_interval" = "Intervalle de Rafraîchissement";
 "general.refresh_interval.description" = "Des intervalles plus courts fournissent des données plus en temps réel mais peuvent affecter la batterie";
 "general.check_overage_limit" = "Vérifier la Limite d'Utilisation Supplémentaire";
@@ -134,7 +134,7 @@
 /* ==================== */
 /* MARK: - Setup Wizard */
 /* ==================== */
-"setup.welcome.title" = "Bienvenue dans Claude Usage Tracker";
+"setup.welcome.title" = "Bienvenue dans Usage Shelf";
 "setup.welcome.subtitle" = "Configurez votre accès API pour commencer le suivi d'utilisation";
 "setup.step.get_session_key" = "Obtenez Votre Clé de Session";
 "setup.step.get_session_key.description" = "Vous devrez extraire votre clé de session de claude.ai";
@@ -167,7 +167,6 @@
 "about.report_issue" = "Signaler un Problème";
 "about.send_feedback" = "Envoyer des Commentaires";
 "about.mit_license" = "Licence MIT • Open Source";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Icon Styles */
@@ -266,7 +265,7 @@
 /* ==================== */
 /* MARK: - GitHub Star Prompt */
 /* ==================== */
-"github.enjoy_app" = "Vous appréciez Claude Usage Tracker ?";
+"github.enjoy_app" = "Vous appréciez Usage Shelf ?";
 "github.star_description" = "Si cette application vous a été utile, pensez à lui donner une étoile sur GitHub ! Cela aide les autres à découvrir le projet et motive le développement continu.";
 "github.star_button" = "Étoile sur GitHub";
 "github.maybe_later" = "Peut-être Plus Tard";
@@ -679,8 +678,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -797,19 +794,6 @@
 "history.export.json" = "Exporter en JSON";
 "history.export.csv" = "Exporter en CSV";
 "history.chart.now" = "Maintenant";
-"support.title" = "Soutenir le Projet";
-"support.subtitle" = "Claude Usage Tracker est gratuit et open source";
-"support.all_features_free" = "Toutes les Fonctionnalités Sont Gratuites";
-"support.all_features_desc" = "Chaque fonctionnalité de cette application est entièrement gratuite. Pas de niveaux premium, pas de paywall, pas d'abonnements.";
-"support.open_source" = "Open Source";
-"support.open_source_desc" = "Le code source est disponible publiquement sur GitHub. Vous pouvez l'inspecter, le modifier et contribuer au projet.";
-"support.no_tracking" = "Pas de Suivi";
-"support.no_tracking_desc" = "Votre vie privée compte. Pas d'analyse, pas de télémétrie, pas de collecte de données. Tout reste sur votre Mac.";
-"support.message" = "Si vous trouvez cette application utile, envisagez de soutenir son développement";
-"support.buy_coffee" = "M'offrir un Café";
-"support.footer" = "Votre soutien aide à maintenir ce projet vivant et en croissance";
-"support.also_support" = "Vous pouvez également soutenir en";
-"support.star_github" = "Mettre une Étoile sur GitHub";
 "debug.title" = "Outils de Débogage";
 "debug.subtitle" = "Enregistrer les requêtes réseau pour le dépannage et les diagnostics";
 "debug.network_logger" = "Enregistreur de Requêtes Réseau";
@@ -1000,8 +984,6 @@
 "menubar.total" = "Total";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "Cet emplacement est disponible pour les sponsors";
-"sponsor.slot_cta" = "Me contacter";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Compte Codex";
@@ -1066,8 +1048,3 @@
 "launcher.verify" = "Vérifier la connexion";
 "launcher.path_warning" = "~/.local/bin n'est pas dans votre PATH. Ajoutez cette ligne à votre profil shell :";
 "launcher.install_failed" = "Impossible d'installer le lanceur : %@";
-"support.popup_title" = "Bonjour, moi c'est Hamed 👋";
-"support.popup_later" = "Peut-être plus tard";
-"support.popup_signature" = "l'équipe d'une seule personne derrière Claude Usage";
-"support.popup_body" = "Gratuit, open source, fait par une seule personne — sans pubs ni pistage. Si Claude Usage vous a déjà évité de griller une limite de session, un café le fait vivre.";
-"support.popup_days" = "Veille sur vos limites depuis %d jours — toujours gratuit";

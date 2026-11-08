@@ -1,6 +1,6 @@
 /*
    Localizable.strings
-   Claude Usage Tracker
+   Usage Shelf
 
    Turkish (Türkçe)
    Created by Claude Code on 2026-03-10.
@@ -10,7 +10,7 @@
 /* MARK: - App Info */
 /* ==================== */
 "app.name" = "Claude Kullanım Takibi";
-"app.window.main" = "Claude Kullanım";
+"app.window.main" = "Usage Shelf";
 "app.window.settings" = "Ayarlar";
 "app.window.github_prompt" = "Claude Kullanım Takibi'ni Destekle";
 
@@ -175,7 +175,6 @@
 "about.report_issue" = "Sorun Bildir";
 "about.send_feedback" = "Geri Bildirim Gönder";
 "about.mit_license" = "MIT Lisansı • Açık Kaynak";
-"about.copyright" = "© 2025 Hamed Elfayome";
 
 /* ==================== */
 /* MARK: - Updates Settings */
@@ -676,8 +675,6 @@
 /* ==================== */
 /* MARK: - Creator Info */
 /* ==================== */
-"creator.name" = "Hamed Elfayome";
-"creator.username" = "@hamed-elfayome";
 
 /* ==================== */
 /* MARK: - Wizard Steps & Actions */
@@ -819,19 +816,6 @@
 /* ==================== */
 /* MARK: - Support View */
 /* ==================== */
-"support.title" = "Projeyi Destekle";
-"support.subtitle" = "Claude Kullanım Takibi ücretsiz ve açık kaynaklıdır";
-"support.all_features_free" = "Tüm Özellikler Ücretsiz";
-"support.all_features_desc" = "Bu uygulamadaki her özellik tamamen ücretsizdir. Premium katman yok, ücret duvarı yok, abonelik yok.";
-"support.open_source" = "Açık Kaynak";
-"support.open_source_desc" = "Kaynak kodu GitHub'da herkese açıktır. Projeyi inceleyebilir, değiştirebilir ve katkıda bulunabilirsiniz.";
-"support.no_tracking" = "Takip Yok";
-"support.no_tracking_desc" = "Gizliliğiniz önemli. Analitik yok, telemetri yok, veri toplama yok. Her şey Mac'inizde kalır.";
-"support.message" = "Bu uygulamayı faydalı buluyorsanız, geliştirmesini desteklemeyi düşünün";
-"support.buy_coffee" = "Bir Kahve Ismarla";
-"support.footer" = "Desteğiniz bu projenin yaşamasına ve büyümesine yardımcı olur";
-"support.also_support" = "Şu şekilde de destek olabilirsiniz:";
-"support.star_github" = "GitHub'da yıldızlayarak";
 
 /* ==================== */
 /* MARK: - Debug View */
@@ -1014,8 +998,6 @@
 "notch.server.retry" = "Yeniden dene";
 
 /* Sponsor slot */
-"sponsor.slot_title" = "Bu alan sponsorlara açıktır";
-"sponsor.slot_cta" = "İletişime geçin";
 
 /* Multi-Provider / OpenAI Codex */
 "section.codex_account_title" = "Codex Hesabı";
@@ -1080,8 +1062,3 @@
 "launcher.verify" = "Oturumu Kontrol Et";
 "launcher.path_warning" = "~/.local/bin PATH içinde değil. Bu satırı kabuk profilinize ekleyin:";
 "launcher.install_failed" = "Başlatıcı yüklenemedi: %@";
-"support.popup_title" = "Merhaba, ben Hamed 👋";
-"support.popup_later" = "Belki sonra";
-"support.popup_signature" = "Claude Usage'ın arkasındaki tek kişilik ekip";
-"support.popup_body" = "Ücretsiz, açık kaynak, tek kişi tarafından yapıldı — reklam yok, izleme yok. Sizi bir oturum limitini yakmaktan kurtardıysa, bir kahve onu ayakta tutar.";
-"support.popup_days" = "%d gündür limitlerinizi izliyor — her zaman ücretsiz";

@@ -10,6 +10,8 @@ import AppKit
 
 /// Presents errors to users in a friendly way
 class ErrorPresenter {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
 
     static let shared = ErrorPresenter()
 

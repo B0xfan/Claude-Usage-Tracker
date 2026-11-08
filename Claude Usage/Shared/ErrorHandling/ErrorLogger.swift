@@ -9,6 +9,8 @@ import Foundation
 
 /// Centralized error logging system
 class ErrorLogger {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
 
     static let shared = ErrorLogger()
 
@@ -86,7 +88,7 @@ class ErrorLogger {
     /// Export error log for support
     func exportLog() -> String {
         return logQueue.sync {
-            var export = "=== Claude Usage Error Log ===\n"
+            var export = "=== Usage Shelf Error Log ===\n"
             export += "Generated: \(Date().formatted())\n"
             export += "Total Errors: \(errorLog.count)\n\n"
 

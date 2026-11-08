@@ -9,6 +9,8 @@ import Foundation
 
 /// Intelligent retry system for network and API operations
 class ErrorRecovery {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
 
     static let shared = ErrorRecovery()
 

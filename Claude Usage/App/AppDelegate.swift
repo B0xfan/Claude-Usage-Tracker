@@ -3,10 +3,16 @@ import SwiftUI
 import UserNotifications
 
 class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private var menuBarManager: MenuBarManager?
     private var setupWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Keep the test host from starting production credentials, permissions,
+        // profiles, notifications, or global input shortcuts.
+        if NSClassFromString("XCTestCase") != nil { return }
+
         // Disable window restoration for menu bar app
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
 
@@ -24,12 +30,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         // Regenerate installed statusline scripts so they pick up format changes
         // across app updates and re-embed fresh Cloudflare clearance cookies.
         try? StatuslineService.shared.updateScriptsIfInstalled()
-
-        // Initialize update manager to enable automatic update checks
-        _ = UpdateManager.shared
-
-        // Monthly support reminder (first check is delayed past startup)
-        SupportReminderService.shared.start()
 
         // Request notification permissions
         requestNotificationPermissions()
@@ -49,9 +49,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         // `menuBarManager` reference even if the wizard never visibly opens.
         menuBarManager = MenuBarManager()
 
-        // Start 24-hour heartbeat ping to track active app usage
-        HeartbeatService.shared.start()
-
         // Claude Code notch HUD (opt-in): start the hook listener + HUD when
         // enabled, and react to the settings toggle at runtime.
         updateNotchHUDServices()
@@ -69,37 +66,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             showSetupWizardManually()
             // Mark that wizard has been shown once
             SharedDataStore.shared.markWizardShown()
-        }
-
-        // Track first launch date for GitHub star prompt
-        if SharedDataStore.shared.loadFirstLaunchDate() == nil {
-            SharedDataStore.shared.saveFirstLaunchDate(Date())
-        }
-
-        // TESTING: Check for launch argument to force GitHub star prompt
-        if CommandLine.arguments.contains("--show-github-prompt") {
-            SharedDataStore.shared.resetGitHubStarPromptForTesting()
-            SharedDataStore.shared.saveFirstLaunchDate(Date().addingTimeInterval(-2 * 24 * 60 * 60))
-        }
-
-        // TESTING: Check for launch argument to force feedback prompt
-        if CommandLine.arguments.contains("--show-feedback-prompt") {
-            SharedDataStore.shared.resetFeedbackPromptForTesting()
-            SharedDataStore.shared.saveFirstLaunchDate(Date().addingTimeInterval(-8 * 24 * 60 * 60))
-        }
-
-        // Check if we should show GitHub star prompt (with a slight delay to not interrupt app startup)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            if SharedDataStore.shared.shouldShowGitHubStarPrompt() {
-                self?.menuBarManager?.showGitHubStarPrompt()
-            }
-        }
-
-        // Check if we should show feedback prompt (after GitHub prompt, avoid overlap)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { [weak self] in
-            if SharedDataStore.shared.shouldShowFeedbackPrompt() {
-                self?.menuBarManager?.showFeedbackPrompt()
-            }
         }
 
         // Headless support: delayed retry for Remote Desktop scenarios
@@ -206,7 +172,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         LoggingService.shared.log("AppDelegate: Created hosting controller")
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Claude Usage Tracker Setup"
+        window.title = "Usage Shelf Setup"
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.center()
         window.isReleasedWhenClosed = false
@@ -248,6 +214,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     }
 
     private func updateNotchHUDServices() {
+        // John's Top Shelf (TopShelf/) replaces the tracker's own notch display. The old display's code stays in
+        // place but switched off: it never starts or installs its hooks, and any it installed earlier are removed
+        // (only its own entries; every other hook in ~/.claude/settings.json is kept). Flip the constant to undo.
+        if Constants.NotchHUD.replacedByTopShelf {
+            NotchHookServer.shared.stop()
+            NotchHUDController.shared.stop()
+            if !TopShelfHost.isRunningTests, NotchHookInstaller.shared.checkStatus() != .notInstalled {
+                _ = NotchHookInstaller.shared.uninstall()
+            }
+            TopShelfHost.shared.start()
+            return
+        }
         if SharedDataStore.shared.loadNotchHUDEnabled() {
             NotchHUDController.shared.start()
             NotchHookServer.shared.start()

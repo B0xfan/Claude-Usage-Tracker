@@ -210,6 +210,9 @@ struct PopoverContentView: View {
             // Usage
             SmartUsageDashboard(usage: displayUsage, apiUsage: displayAPIUsage, provider: displayProvider)
 
+            PopoverDivider()
+            KeepAwakePopoverSection(controller: manager.keepAwake)
+
             // Contextual Insights
             if showInsights {
                 PopoverDivider()

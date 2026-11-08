@@ -11,7 +11,11 @@ struct ShortcutsSettingsView: View {
     @State private var togglePopoverCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.togglePopover]
     @State private var refreshCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.refresh]
     @State private var openSettingsCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.openSettings]
+    @State private var keepAwakeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.keepAwake]
+    @State private var keepAwakeWarning: String?
     @State private var nextProfileCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.nextProfile]
+    @State private var cleaningModeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.cleaningMode]
+    @State private var cleaningModeWarning: String?
 
     var body: some View {
         ScrollView {
@@ -63,6 +67,33 @@ struct ShortcutsSettingsView: View {
                             combo: $nextProfileCombo,
                             action: .nextProfile
                         )
+                        // Keep awake
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                            shortcutRow(
+                                icon: "sun.max",
+                                title: "Keep awake",
+                                description: "Turn Keep awake on with the last duration, or turn it off",
+                                combo: $keepAwakeCombo,
+                                action: .keepAwake,
+                                warning: $keepAwakeWarning
+                            )
+                            if let keepAwakeWarning {
+                                ShortcutWarningView(message: keepAwakeWarning)
+                            }
+                        }
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                            shortcutRow(
+                                icon: "sparkles",
+                                title: "Start Cleaning Mode",
+                                description: "Start with your saved cleaning choices. No shortcut is set by default.",
+                                combo: $cleaningModeCombo,
+                                action: .cleaningMode,
+                                warning: $cleaningModeWarning
+                            )
+                            if let cleaningModeWarning { ShortcutWarningView(message: cleaningModeWarning) }
+                            Text("The shortcut never replaces the timer or the 3-second mouse or trackpad hold.")
+                                .font(DesignTokens.Typography.caption).foregroundColor(.secondary)
+                        }
                     }
                 }
 
@@ -102,7 +133,8 @@ struct ShortcutsSettingsView: View {
         title: String,
         description: String,
         combo: Binding<KeyCombo?>,
-        action: ShortcutAction
+        action: ShortcutAction,
+        warning: Binding<String?>? = nil
     ) -> some View {
         HStack {
             HStack(spacing: DesignTokens.Spacing.iconText) {
@@ -125,8 +157,10 @@ struct ShortcutsSettingsView: View {
             ShortcutRecorderView(keyCombo: Binding(
                 get: { combo.wrappedValue },
                 set: { newValue in
-                    combo.wrappedValue = newValue
-                    ShortcutManager.shared.setShortcut(newValue, for: action)
+                    let previous = combo.wrappedValue
+                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
+                    warning?.wrappedValue = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
+                    if result != .success { combo.wrappedValue = previous }
                 }
             ))
         }
@@ -140,5 +174,5 @@ struct ShortcutsSettingsView: View {
 
 #Preview {
     ShortcutsSettingsView()
-        .frame(width: 520, height: 600)
+        .frame(width: 520, height: 680)
 }

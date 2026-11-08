@@ -9,6 +9,8 @@ import Cocoa
 
 /// Handles rendering of individual metric icons for the menu bar
 final class MenuBarIconRenderer {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
 
     // MARK: - Public Methods
 
@@ -75,6 +77,24 @@ final class MenuBarIconRenderer {
 
         // Render based on icon style for Session and Week
         switch config.iconStyle {
+        case .rings:
+            let sessionConfig = globalConfig.config(for: .session) ?? config
+            let weekConfig = globalConfig.config(for: .week) ?? config
+            let session = getMetricData(
+                metricType: .session, config: sessionConfig, usage: usage, apiUsage: apiUsage,
+                showRemaining: globalConfig.showRemainingPercentage, usePaceColoring: globalConfig.usePaceColoring
+            )
+            let week = getMetricData(
+                metricType: .week, config: weekConfig, usage: usage, apiUsage: apiUsage,
+                showRemaining: globalConfig.showRemainingPercentage, usePaceColoring: globalConfig.usePaceColoring
+            )
+            return createCombinedRingsIcon(
+                sessionPercentage: session.percentage,
+                weekPercentage: week.percentage,
+                sessionLevel: session.statusLevel,
+                weekLevel: week.statusLevel,
+                isDarkMode: isDarkMode
+            )
         case .battery:
             return createBatteryStyle(
                 metricType: metricType,
@@ -727,6 +747,22 @@ final class MenuBarIconRenderer {
         return image
     }
 
+    /// Adds Keep awake inside an existing status item so it cannot drift to a separate position.
+    /// Returning the original image while off preserves its exact width and template behavior.
+    func appendingKeepAwakeAccessory(_ accessory: NSImage?, to icon: NSImage) -> NSImage {
+        guard let accessory else { return icon }
+        let spacing: CGFloat = 4
+        let width = icon.size.width + spacing + accessory.size.width
+        let height = max(icon.size.height, accessory.size.height)
+        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { _ in
+            icon.draw(at: NSPoint(x: 0, y: (height - icon.size.height) / 2), from: .zero, operation: .sourceOver, fraction: 1)
+            accessory.draw(at: NSPoint(x: icon.size.width + spacing, y: (height - accessory.size.height) / 2), from: .zero, operation: .sourceOver, fraction: 1)
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
+
     // MARK: - Multi-Profile Concentric Icon
 
     /// Creates a compact concentric circle icon for multi-profile display mode
@@ -753,7 +789,9 @@ final class MenuBarIconRenderer {
         weekTimeMarker: CGFloat? = nil,
         sessionPaceStatus: PaceStatus? = nil,
         weekPaceStatus: PaceStatus? = nil,
-        showPaceMarker: Bool = false
+        showPaceMarker: Bool = false,
+        sessionColorOverride: NSColor? = nil,
+        weekColorOverride: NSColor? = nil
     ) -> NSImage {
         let size: CGFloat = 24
         let image = NSImage(size: NSSize(width: size, height: size))
@@ -766,8 +804,8 @@ final class MenuBarIconRenderer {
         // Use isDarkMode to determine correct foreground color for menu bar
         let foregroundColor = menuBarForegroundColor(isDarkMode: isDarkMode)
         let textColor: NSColor = foregroundColor
-        let sessionColor: NSColor = getColor(for: sessionStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
-        let weekColor: NSColor = getColor(for: weekStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
+        let sessionColor: NSColor = sessionColorOverride ?? getColor(for: sessionStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
+        let weekColor: NSColor = weekColorOverride ?? getColor(for: weekStatus, monochromeMode: monochromeMode, useSystemColor: useSystemColor, isDarkMode: isDarkMode)
         let backgroundColor: NSColor = foregroundColor.withAlphaComponent(0.15)
 
         // Outer ring (Session) - larger radius, thicker stroke - Session is primary/more important
@@ -872,6 +910,38 @@ final class MenuBarIconRenderer {
         let labelY = center.y - labelSize.height / 2
         labelString.draw(at: NSPoint(x: labelX, y: labelY), withAttributes: labelAttributes)
 
+        return image
+    }
+
+    /// "Both Rings" style: one icon for both numbers. The outer ring is the weekly
+    /// number (teal) and the inner ring the 5-hour number (green), using the app's own
+    /// system colors. Like the old ring arcs, a ring turns orange at the moderate level
+    /// and red at the critical level (UsageStatusCalculator, incl. pace and remaining modes).
+    /// Always colored, never a template; the empty track is the menu bar color at 15%.
+    func createCombinedRingsIcon(
+        sessionPercentage: Double,
+        weekPercentage: Double,
+        sessionLevel: UsageStatusLevel,
+        weekLevel: UsageStatusLevel,
+        isDarkMode: Bool
+    ) -> NSImage {
+        func color(_ level: UsageStatusLevel, normal: NSColor) -> NSColor {
+            level == .safe ? normal : getColorForStatusLevel(level)  // .systemOrange / .systemRed
+        }
+        // createConcentricIcon draws its "session" values on the outer ring,
+        // so the weekly number goes in that slot and the 5-hour number inside.
+        let image = createConcentricIcon(
+            sessionPercentage: weekPercentage,
+            weekPercentage: sessionPercentage,
+            sessionStatus: .safe,
+            weekStatus: .safe,
+            profileInitial: "",
+            monochromeMode: true,
+            isDarkMode: isDarkMode,
+            sessionColorOverride: color(weekLevel, normal: .systemTeal),
+            weekColorOverride: color(sessionLevel, normal: .systemGreen)
+        )
+        image.isTemplate = false
         return image
     }
 

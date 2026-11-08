@@ -10,6 +10,8 @@ import SwiftUI
 
 /// Coordinates window lifecycle (popover, settings, GitHub prompt, detached window)
 final class WindowCoordinator: NSObject {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     private var popover: NSPopover?
     private var eventMonitor: Any?
     private var detachedWindow: NSWindow?

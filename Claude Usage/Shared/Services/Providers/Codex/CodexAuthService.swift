@@ -59,6 +59,8 @@ struct CodexCredentials {
 }
 
 final class CodexAuthService {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
     static let shared = CodexAuthService()
 
     private init() {}
