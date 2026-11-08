@@ -22,6 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Every Class Has Its Own Deinit
+        run: python3 -I .github/scripts/check_explicit_deinit.py "Claude Usage"
+
       - name: Select Xcode 26.0.1
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
 
