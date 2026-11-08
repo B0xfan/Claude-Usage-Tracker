@@ -12,15 +12,22 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Unsigned Build and Cleaning Mode Tests
-    runs-on: macos-15-intel
+    name: Unsigned Build and Cleaning Mode Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15-intel, macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 26.0.1
-        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app/Contents/Developer
+      - name: Select Newest Xcode 26
+        run: |
+          ls -d /Applications/Xcode_26*.app
+          XC=$(ls -d /Applications/Xcode_26*.app | grep -v -i beta | sort -V | tail -1)
+          sudo xcode-select -s "$XC/Contents/Developer"
 
       - name: Show Build Environment
         run: |
@@ -74,7 +81,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cleaning-mode-test-evidence-${{ github.sha }}
+          name: cleaning-mode-test-evidence-${{ matrix.os }}-${{ github.sha }}
           path: |
             CleaningMode.xcresult
             CleaningModeTests.json
@@ -108,6 +115,6 @@ jobs:
       - name: Upload Unsigned Build
         uses: actions/upload-artifact@v4
         with:
-          name: cleaning-mode-${{ github.sha }}
+          name: cleaning-mode-${{ matrix.os }}-${{ github.sha }}
           path: artifacts/
           retention-days: 7
