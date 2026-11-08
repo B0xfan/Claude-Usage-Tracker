@@ -16,18 +16,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15-intel, macos-15, macos-26]
+        include:
+          - { os: macos-15-intel, xcode: "26.3" }
+          - { os: macos-15, xcode: "26.3" }
+          - { os: macos-26, xcode: "26.6" }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Newest Xcode 26
-        run: |
-          ls -d /Applications/Xcode_26*.app
-          XC=$(ls -d /Applications/Xcode_26*.app | grep -v -i beta | sort -V | tail -1)
-          sudo xcode-select -s "$XC/Contents/Developer"
+      - name: Select Xcode ${{ matrix.xcode }}
+        run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer"
+
+      - name: Check Every Class Has Its Own Deinit
+        run: python3 -I .github/scripts/check_explicit_deinit.py "Claude Usage"
 
       - name: Show Build Environment
         run: |
