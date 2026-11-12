@@ -200,7 +200,10 @@ final class CleaningModeShortcutTests: XCTestCase {
 
     // 9
     func testNoShortcutRecordedBehavesAsBefore() {
-        controller.start(now: 100)
+        // The overlay is drawn on the next main-queue pass, so the session needs a
+        // real-clock start: the controller's deadline runs on wall time and would
+        // already have expired a session started at a made-up time like 100.
+        controller.start(now: Date().timeIntervalSinceReferenceDate)
         XCTAssertEqual(blocker.lastConfiguration, CleaningInputConfiguration(blockPointer: true))
         XCTAssertNil(blocker.lastConfiguration?.offShortcut)
         drainMainQueue()
@@ -222,13 +225,14 @@ final class CleaningModeShortcutTests: XCTestCase {
     // 10
     func testHintLineUsesTheRealComboInBothStylesLightAndDark() throws {
         record(example)
-        controller.start(now: 100)
+        // Real-clock starts, as in test 9: the overlay is drawn after the deadline check.
+        controller.start(now: Date().timeIntervalSinceReferenceDate)
         drainMainQueue()
         XCTAssertEqual(overlay.hints, ["or press ⌃⌥⌘C again"])
         let other = KeyCombo(keyCode: UInt16(kVK_ANSI_L), modifierFlags: [.shift, .command])
         controller.stop(reason: .manual)
         record(other)
-        controller.start(now: 200)
+        controller.start(now: Date().timeIntervalSinceReferenceDate)
         drainMainQueue()
         XCTAssertEqual(overlay.hints.last, "or press ⇧⌘L again")
         let folder = URL(fileURLWithPath: "/tmp/usage-shelf-cleaning-mode-shots", isDirectory: true)
