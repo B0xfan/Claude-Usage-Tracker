@@ -327,6 +327,8 @@ struct SettingsView: View {
                     KeepAwakeSettingsView()
                 case .cleaningMode:
                     CleaningModeSettingsView()
+                case .textGrab:
+                    TextGrabSettingsView()
                 case .debug:
                     DebugNetworkLogView()
                 case .about:
@@ -591,6 +593,7 @@ enum SettingsSection: String, CaseIterable {
     case popover
     case keepAwake
     case cleaningMode
+    case textGrab
     case debug
     case about
 
@@ -612,6 +615,7 @@ enum SettingsSection: String, CaseIterable {
         case .popover: return "section.popover_title".localized
         case .keepAwake: return "Keep Awake"
         case .cleaningMode: return "Cleaning Mode"
+        case .textGrab: return TextGrabCopy.sectionTitle
         case .debug: return "section.debug_title".localized
         case .about: return "settings.about".localized
         }
@@ -635,6 +639,7 @@ enum SettingsSection: String, CaseIterable {
         case .popover: return "rectangle.topthird.inset.filled"
         case .keepAwake: return "sun.max.fill"
         case .cleaningMode: return "sparkles"
+        case .textGrab: return "text.viewfinder"
         case .debug: return "ladybug.fill"
         case .about: return "info.circle.fill"
         }
@@ -658,6 +663,7 @@ enum SettingsSection: String, CaseIterable {
         case .popover: return "section.popover_desc".localized
         case .keepAwake: return "Stop your Mac from sleeping when you need it awake"
         case .cleaningMode: return "Clean your keyboard and screen without accidental input"
+        case .textGrab: return TextGrabCopy.sectionDescription
         case .debug: return "section.debug_desc".localized
         case .about: return "settings.about.description".localized
         }

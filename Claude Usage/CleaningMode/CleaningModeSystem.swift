@@ -33,17 +33,20 @@ final class CleaningInputBlocker: CleaningInputBlocking {
     var onPointerUp: (() -> Void)?
     var onPointerMoved: (() -> Void)?
     var onFailure: (() -> Void)?
+    var onOffShortcut: (() -> Void)?
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var configuration = CleaningInputConfiguration(blockPointer: true)
+    /// Every key press, release and modifier change is swallowed while cleaning.
+    static let keyboardMask: CGEventMask =
+        (1 << CGEventType.keyDown.rawValue) |
+        (1 << CGEventType.keyUp.rawValue) |
+        (1 << CGEventType.flagsChanged.rawValue)
 
     func start(configuration: CleaningInputConfiguration) -> Bool {
         stop()
         self.configuration = configuration
-        let keyboard: CGEventMask =
-            (1 << CGEventType.keyDown.rawValue) |
-            (1 << CGEventType.keyUp.rawValue) |
-            (1 << CGEventType.flagsChanged.rawValue)
+        let keyboard = Self.keyboardMask
         let pointerTypes: [CGEventType] = [
             .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseDown,
             .otherMouseUp, .mouseMoved, .leftMouseDragged, .rightMouseDragged,
@@ -75,6 +78,14 @@ final class CleaningInputBlocker: CleaningInputBlocking {
                     owner.onPointerUp?()
                 case .mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
                     owner.onPointerMoved?()
+                case .keyDown:
+                    // Compared in memory against the one recorded off combo, then forgotten.
+                    // The press is still swallowed below, so it never reaches another app.
+                    let keyCode = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
+                    let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+                    if CleaningKeyGate.isOffPress(type: type, keyCode: keyCode, flags: event.flags, isRepeat: isRepeat, shortcut: owner.configuration.offShortcut) {
+                        owner.onOffShortcut?()
+                    }
                 default: break
                 }
                 // Always suppress matching events. The local callbacks above are
