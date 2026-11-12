@@ -141,8 +141,10 @@ struct ShortcutRecorderView: View {
 /// One saved shortcut edited from any page: the Shortcuts list and a feature's own page
 /// both write through ShortcutManager, so clearing either clears both.
 enum ShortcutBinding {
-    static func make(for action: ShortcutAction, combo: Binding<KeyCombo?>, warning: Binding<String?>?, manager: ShortcutManager = .shared) -> Binding<KeyCombo?> {
-        Binding(
+    static func make(for action: ShortcutAction, combo: Binding<KeyCombo?>, warning: Binding<String?>?, manager: ShortcutManager? = nil) -> Binding<KeyCombo?> {
+        // Resolved here, on the main actor, not as a default-argument expression.
+        let manager = manager ?? ShortcutManager.shared
+        return Binding(
             get: { combo.wrappedValue },
             set: { newValue in
                 let previous = combo.wrappedValue

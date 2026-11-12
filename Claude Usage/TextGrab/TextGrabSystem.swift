@@ -192,7 +192,7 @@ final class TextGrabFeedback: TextGrabFeedbackPresenting {
             context.duration = 0.2
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self, self.content == nil else { return }
                 self.panel?.orderOut(nil)
             }

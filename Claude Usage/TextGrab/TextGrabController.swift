@@ -70,23 +70,25 @@ final class TextGrabController: ObservableObject {
 
     var canTryNow: Bool { permissionState == .ready && phase == .idle && !isCleaningActive() }
 
+    /// Defaults are resolved inside the main-actor init body rather than as
+    /// default-argument expressions, which Swift evaluates outside the actor.
     init(defaults: UserDefaults,
-         permissions: TextGrabPermissionChecking = TextGrabPermissions(),
-         capturer: TextGrabCapturing = TextGrabScreenCapturer(),
-         recognizer: TextGrabRecognizing = TextGrabVisionRecognizer(),
-         clipboard: TextGrabClipboardWriting = TextGrabPasteboard(),
-         selection: TextGrabSelectionPresenting = TextGrabSelectionOverlay(),
-         feedback: TextGrabFeedbackPresenting = TextGrabFeedback(),
-         isCleaningActive: @escaping () -> Bool = { CleaningModeController.shared.isActive },
+         permissions: TextGrabPermissionChecking? = nil,
+         capturer: TextGrabCapturing? = nil,
+         recognizer: TextGrabRecognizing? = nil,
+         clipboard: TextGrabClipboardWriting? = nil,
+         selection: TextGrabSelectionPresenting? = nil,
+         feedback: TextGrabFeedbackPresenting? = nil,
+         isCleaningActive: (() -> Bool)? = nil,
          readingNoticeDelay: TimeInterval = 0.5) {
         self.defaults = defaults
-        self.permissions = permissions
-        self.capturer = capturer
-        self.recognizer = recognizer
-        self.clipboard = clipboard
-        self.selection = selection
-        self.feedback = feedback
-        self.isCleaningActive = isCleaningActive
+        self.permissions = permissions ?? TextGrabPermissions()
+        self.capturer = capturer ?? TextGrabScreenCapturer()
+        self.recognizer = recognizer ?? TextGrabVisionRecognizer()
+        self.clipboard = clipboard ?? TextGrabPasteboard()
+        self.selection = selection ?? TextGrabSelectionOverlay()
+        self.feedback = feedback ?? TextGrabFeedback()
+        self.isCleaningActive = isCleaningActive ?? { CleaningModeController.shared.isActive }
         self.readingNoticeDelay = readingNoticeDelay
         self.settings = TextGrabSettings.load(from: defaults)
         // Deliberately no permission check here: it runs when the shortcut is pressed

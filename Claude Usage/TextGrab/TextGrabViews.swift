@@ -8,8 +8,10 @@ struct TextGrabSettingsView: View {
     @State private var shortcutWarning: String?
     @State private var languages: [TextGrabLanguage] = [.automatic]
 
-    init(controller: TextGrabController = .shared, shortcuts: ShortcutManager = .shared) {
-        self.controller = controller
+    /// Shared instances are resolved in the body, on the main actor, not as default arguments.
+    init(controller: TextGrabController? = nil, shortcuts: ShortcutManager? = nil) {
+        let shortcuts = shortcuts ?? ShortcutManager.shared
+        self.controller = controller ?? TextGrabController.shared
         self.shortcuts = shortcuts
         _shortcut = State(initialValue: shortcuts.shortcuts[.textGrab])
     }

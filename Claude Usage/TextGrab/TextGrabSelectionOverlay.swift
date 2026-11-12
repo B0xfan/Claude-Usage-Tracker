@@ -102,18 +102,18 @@ final class TextGrabSelectionOverlay: TextGrabSelectionPresenting {
         let workspace = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.activeSpaceDidChangeNotification, NSWorkspace.sessionDidResignActiveNotification, NSWorkspace.screensDidSleepNotification, NSWorkspace.willSleepNotification] {
             let token = workspace.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.finish(.cancelled) }
+                Task { @MainActor [weak self] in self?.finish(.cancelled) }
             }
             observers.append((center: workspace, token: token))
         }
         let app = NotificationCenter.default
         let screens = app.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.finish(.cancelled) }
+            Task { @MainActor [weak self] in self?.finish(.cancelled) }
         }
         observers.append((center: app, token: screens))
         let distributed = DistributedNotificationCenter.default()
         let lock = distributed.addObserver(forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.finish(.cancelled) }
+            Task { @MainActor [weak self] in self?.finish(.cancelled) }
         }
         observers.append((center: distributed, token: lock))
     }

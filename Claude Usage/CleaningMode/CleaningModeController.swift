@@ -60,7 +60,7 @@ protocol CleaningPermissionHandling: AnyObject {
     func open(_ pane: CleaningPermissionPane)
 }
 
-struct CleaningInputConfiguration: Equatable {
+nonisolated struct CleaningInputConfiguration: Equatable, Sendable {
     var blockPointer: Bool
     /// The one exact combo allowed to end cleaning from the keyboard, or nil when none is recorded.
     var offShortcut: CleaningOffShortcut? = nil
@@ -188,39 +188,41 @@ final class CleaningModeController: ObservableObject {
 
     var canStart: Bool { permissionState == .ready && !isActive }
 
+    /// Defaults are resolved inside the main-actor init body rather than as
+    /// default-argument expressions, which Swift evaluates outside the actor.
     init(defaults: UserDefaults,
-         permissions: CleaningPermissionHandling = CleaningPermissions(),
-         blocker: CleaningInputBlocking = CleaningInputBlocker(),
-         overlay: CleaningOverlayHandling = CleaningOverlayController.shared,
-         awake: CleaningAwakeHandling = CleaningAwakeAssertion(),
-         otherInput: CleaningOtherInputHandling = CleaningOtherInputCoordinator(),
-         offShortcut: @escaping () -> KeyCombo? = { ShortcutManager.shared.shortcuts[.cleaningMode] }) {
+         permissions: CleaningPermissionHandling? = nil,
+         blocker: CleaningInputBlocking? = nil,
+         overlay: CleaningOverlayHandling? = nil,
+         awake: CleaningAwakeHandling? = nil,
+         otherInput: CleaningOtherInputHandling? = nil,
+         offShortcut: (() -> KeyCombo?)? = nil) {
         self.defaults = defaults
-        self.offShortcutCombo = offShortcut
-        self.permissions = permissions
-        self.blocker = blocker
-        self.overlay = overlay
-        self.awake = awake
-        self.otherInput = otherInput
+        self.offShortcutCombo = offShortcut ?? { ShortcutManager.shared.shortcuts[.cleaningMode] }
+        self.permissions = permissions ?? CleaningPermissions()
+        self.blocker = blocker ?? CleaningInputBlocker()
+        self.overlay = overlay ?? CleaningOverlayController.shared
+        self.awake = awake ?? CleaningAwakeAssertion()
+        self.otherInput = otherInput ?? CleaningOtherInputCoordinator()
         self.settings = CleaningModeSettings.load(from: defaults)
         self.blocker.onPointerDown = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.pointerDown(at: now) }
+            Task { @MainActor [weak self] in self?.pointerDown(at: now) }
         }
         self.blocker.onPointerUp = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.pointerUp(at: now) }
+            Task { @MainActor [weak self] in self?.pointerUp(at: now) }
         }
         self.blocker.onPointerMoved = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.pointerMoved(at: now) }
+            Task { @MainActor [weak self] in self?.pointerMoved(at: now) }
         }
         self.blocker.onFailure = { [weak self] in
-            Task { @MainActor in self?.inputMechanismFailed() }
+            Task { @MainActor [weak self] in self?.inputMechanismFailed() }
         }
         self.blocker.onOffShortcut = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.offShortcutPressed(at: now) }
+            Task { @MainActor [weak self] in self?.offShortcutPressed(at: now) }
         }
         refreshPermissions()
     }
@@ -233,17 +235,17 @@ final class CleaningModeController: ObservableObject {
         currentTime = Date().timeIntervalSinceReferenceDate
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.settingsBecameActive() }
+            Task { @MainActor [weak self] in self?.settingsBecameActive() }
         })
         observers.append(center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.screensChanged() }
+            Task { @MainActor [weak self] in self?.screensChanged() }
         })
         observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.cleanup() }
+            Task { @MainActor [weak self] in self?.cleanup() }
         })
         for name in ["com.apple.screenIsLocked", "com.apple.sessionDidResignActive"] {
             observers.append(DistributedNotificationCenter.default().addObserver(forName: NSNotification.Name(name), object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.screenLocked() }
+                Task { @MainActor [weak self] in self?.screenLocked() }
             })
         }
         // A repeat interval faster than the three-second gesture and all four
