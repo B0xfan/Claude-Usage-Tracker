@@ -47,6 +47,8 @@ struct TextGrabSettingsView: View {
                         SettingToggle(title: TextGrabCopy.playSound, description: TextGrabCopy.playSoundDetail,
                                       isOn: Binding(get: { controller.settings.playSound }, set: { controller.update(\.playSound, value: $0) }))
                         Divider()
+                        copiedSoundRow
+                        Divider()
                         HStack(alignment: .center, spacing: 16) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(TextGrabCopy.language).font(DesignTokens.Typography.body)
@@ -78,6 +80,32 @@ struct TextGrabSettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             controller.refreshPermission()
         }
+    }
+
+    /// Sound when text is copied: menu plus speaker, dimmed and disabled while sound is off.
+    private var copiedSoundRow: some View {
+        let enabled = controller.copiedSoundControlsEnabled
+        return HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(TextGrabCopy.copiedSound).font(DesignTokens.Typography.body)
+                Text(TextGrabCopy.copiedSoundDetail).font(DesignTokens.Typography.caption).foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) {
+                Picker("", selection: Binding(get: { controller.settings.copiedSound }, set: { controller.chooseCopiedSound($0) })) {
+                    ForEach(TextGrabCaptureSound.allCases, id: \.self) { Text($0.name).tag($0) }
+                }
+                .labelsHidden().pickerStyle(.menu).fixedSize()
+                Button { controller.previewCopiedSound() } label: {
+                    Image(systemName: "speaker.wave.2")
+                }
+                .help(TextGrabCopy.playCopiedSound)
+                .accessibilityLabel(TextGrabCopy.playCopiedSound)
+            }
+            .disabled(!enabled)
+        }
+        .opacity(enabled ? 1 : 0.45)
     }
 
     /// Always includes the saved choice, even if this macOS no longer lists it.

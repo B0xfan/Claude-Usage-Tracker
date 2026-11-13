@@ -161,6 +161,12 @@ final class TextGrabFeedback: TextGrabFeedbackPresenting {
     private var hideGeneration = 0
     private var hovering = false
     private var content: TextGrabToastContent?
+    private let player: TextGrabSoundPlaying
+
+    /// The player is resolved inside the main-actor init body, not as a default argument.
+    init(player: TextGrabSoundPlaying? = nil) {
+        self.player = player ?? TextGrabSystemSoundPlayer()
+    }
 
     func show(_ toast: TextGrabToastContent, displayID: CGDirectDisplayID?) {
         content = toast
@@ -200,7 +206,7 @@ final class TextGrabFeedback: TextGrabFeedbackPresenting {
     }
 
     func play(_ sound: TextGrabSound) {
-        NSSound(named: NSSound.Name(sound == .copied ? "Glass" : "Basso"))?.play()
+        player.play(named: sound.soundName)
     }
 
     private func hoverChanged(_ inside: Bool) {
@@ -215,6 +221,16 @@ final class TextGrabFeedback: TextGrabFeedbackPresenting {
             guard let self, self.hideGeneration == generation, !self.hovering else { return }
             self.hide()
         }
+    }
+}
+
+/// Plays a built-in Mac sound once with NSSound. Nothing is copied or written.
+final class TextGrabSystemSoundPlayer: TextGrabSoundPlaying {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
+
+    func play(named name: String) {
+        NSSound(named: NSSound.Name(name))?.play()
     }
 }
 

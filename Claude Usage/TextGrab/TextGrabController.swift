@@ -34,6 +34,11 @@ protocol TextGrabSelectionPresenting: AnyObject {
 }
 
 /// The toast under the menu bar rings, and the optional sound.
+/// Plays one built-in Mac sound by name. Injected so self-tests never make a sound.
+protocol TextGrabSoundPlaying: AnyObject {
+    func play(named name: String)
+}
+
 protocol TextGrabFeedbackPresenting: AnyObject {
     func show(_ toast: TextGrabToastContent, displayID: CGDirectDisplayID?)
     func hide()
@@ -187,7 +192,7 @@ final class TextGrabController: ObservableObject {
         lastOutcome = .copied(text)
         let preview = settings.showPreview ? TextGrabFormatter.preview(for: text) : nil
         feedback.show(.copied(title: TextGrabFormatter.toastTitle(for: text), preview: preview), displayID: displayID)
-        if settings.playSound { feedback.play(.copied) }
+        if settings.playSound { feedback.play(.copied(settings.copiedSound)) }
     }
 
     /// Cleaning Mode started: drop any selection or reading in progress. Nothing is copied.
@@ -200,6 +205,22 @@ final class TextGrabController: ObservableObject {
         generation += 1
         phase = .idle
         lastOutcome = .cancelled
+    }
+
+    /// The capture sound menu and speaker only work while "Play a sound when done" is on.
+    var copiedSoundControlsEnabled: Bool { settings.playSound }
+
+    /// Picking a sound in the menu saves it and plays it once. Does nothing while sound is off.
+    func chooseCopiedSound(_ sound: TextGrabCaptureSound) {
+        guard copiedSoundControlsEnabled else { return }
+        update(\.copiedSound, value: sound)
+        feedback.play(.copied(sound))
+    }
+
+    /// The speaker: plays the selected sound once. No grab, no toast, no clipboard change.
+    func previewCopiedSound() {
+        guard copiedSoundControlsEnabled else { return }
+        feedback.play(.copied(settings.copiedSound))
     }
 
     func consumeSettingsRequest() { shouldOpenSettings = false }

@@ -35,6 +35,9 @@ nonisolated enum TextGrabCopy {
     static let showPreviewDetail = "A small note under the menu bar with the first lines of text."
     static let playSound = "Play a sound when done"
     static let playSoundDetail = "A short sound when text is copied or none is found."
+    static let copiedSound = "Sound when text is copied"
+    static let copiedSoundDetail = "Choose a built-in Mac sound. The speaker plays it once."
+    static let playCopiedSound = "Play sound"
     static let language = "Recognition language"
     static let languageDetail = "Automatic detects the language. Pick one for short or mixed text."
     static let automatic = "Automatic"
@@ -75,17 +78,38 @@ nonisolated enum TextGrabLanguage: Hashable, Sendable {
     }
 }
 
+/// The built-in Mac sounds in /System/Library/Sounds, in menu order. The list is fixed
+/// here on purpose: nothing reads, copies or adds sound files.
+nonisolated enum TextGrabCaptureSound: String, CaseIterable, Hashable, Sendable {
+    case basso = "Basso", blow = "Blow", bottle = "Bottle", frog = "Frog", funk = "Funk"
+    case glass = "Glass", hero = "Hero", morse = "Morse", ping = "Ping", pop = "Pop"
+    case purr = "Purr", sosumi = "Sosumi", submarine = "Submarine", tink = "Tink"
+
+    /// The sound a successful grab always played before this setting existed.
+    static let standard = TextGrabCaptureSound.glass
+
+    /// A missing or unknown saved name falls back to Glass.
+    init(storedValue: String?) {
+        self = storedValue.flatMap(TextGrabCaptureSound.init(rawValue:)) ?? .standard
+    }
+
+    /// The system sound name, also shown in the menu.
+    var name: String { rawValue }
+}
+
 nonisolated struct TextGrabSettings: Equatable, Sendable {
     var keepLineBreaks = true
     var playSound = false
     var language = TextGrabLanguage.automatic
     var showPreview = true
+    var copiedSound = TextGrabCaptureSound.standard
 
     nonisolated enum Key {
         static let keepLineBreaks = "textGrab.keepLineBreaks"
         static let playSound = "textGrab.playSound"
         static let language = "textGrab.language"
         static let showPreview = "textGrab.showPreview"
+        static let copiedSound = "textGrab.copiedSound"
     }
 
     static func load(from defaults: UserDefaults) -> TextGrabSettings {
@@ -93,7 +117,8 @@ nonisolated struct TextGrabSettings: Equatable, Sendable {
             keepLineBreaks: defaults.object(forKey: Key.keepLineBreaks) as? Bool ?? true,
             playSound: defaults.object(forKey: Key.playSound) as? Bool ?? false,
             language: TextGrabLanguage(storedValue: defaults.string(forKey: Key.language)),
-            showPreview: defaults.object(forKey: Key.showPreview) as? Bool ?? true
+            showPreview: defaults.object(forKey: Key.showPreview) as? Bool ?? true,
+            copiedSound: TextGrabCaptureSound(storedValue: defaults.string(forKey: Key.copiedSound))
         )
     }
 
@@ -102,6 +127,7 @@ nonisolated struct TextGrabSettings: Equatable, Sendable {
         defaults.set(playSound, forKey: Key.playSound)
         defaults.set(language.storedValue, forKey: Key.language)
         defaults.set(showPreview, forKey: Key.showPreview)
+        defaults.set(copiedSound.name, forKey: Key.copiedSound)
     }
 }
 
@@ -150,7 +176,18 @@ nonisolated enum TextGrabToastContent: Equatable, Sendable {
     }
 }
 
-nonisolated enum TextGrabSound: Equatable, Sendable { case copied, notFound }
+/// What to play: the chosen capture sound after a copy, or Basso when no text is found.
+nonisolated enum TextGrabSound: Equatable, Sendable {
+    case copied(TextGrabCaptureSound)
+    case notFound
+
+    var soundName: String {
+        switch self {
+        case .copied(let sound): return sound.name
+        case .notFound: return "Basso"
+        }
+    }
+}
 
 nonisolated enum TextGrabGeometry {
     /// A box smaller than this in either direction is a plain click and cancels.
