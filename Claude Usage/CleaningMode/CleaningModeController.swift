@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreGraphics
 import Foundation
 
 /// Every choice is finite. Invalid saved values fall back to the one-minute default.
@@ -59,8 +60,49 @@ protocol CleaningPermissionHandling: AnyObject {
     func open(_ pane: CleaningPermissionPane)
 }
 
-struct CleaningInputConfiguration: Equatable {
+nonisolated struct CleaningInputConfiguration: Equatable, Sendable {
     var blockPointer: Bool
+    /// The one exact combo allowed to end cleaning from the keyboard, or nil when none is recorded.
+    var offShortcut: CleaningOffShortcut? = nil
+}
+
+/// Cleaning Mode's on/off shortcut as the keyboard pause sees it. Only Control, Option,
+/// Shift and Command count, and a combo with fewer than two of them never becomes one,
+/// so wiping the keys can't end cleaning. Matching happens in memory only: nothing about
+/// the pressed key is stored, logged or shown.
+nonisolated struct CleaningOffShortcut: Equatable, Sendable {
+    static let minimumModifiers = 2
+    static let relevantFlags: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
+
+    let keyCode: UInt16
+    let flags: CGEventFlags
+
+    init?(keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags) {
+        var flags: CGEventFlags = []
+        if modifierFlags.contains(.control) { flags.insert(.maskControl) }
+        if modifierFlags.contains(.option) { flags.insert(.maskAlternate) }
+        if modifierFlags.contains(.shift) { flags.insert(.maskShift) }
+        if modifierFlags.contains(.command) { flags.insert(.maskCommand) }
+        let count = [CGEventFlags.maskControl, .maskAlternate, .maskShift, .maskCommand].filter { flags.contains($0) }.count
+        guard count >= Self.minimumModifiers else { return nil }
+        self.keyCode = keyCode
+        self.flags = flags
+    }
+
+    /// The recorded key with exactly the recorded modifiers, and not a key repeat.
+    func matches(keyCode: UInt16, flags: CGEventFlags, isRepeat: Bool) -> Bool {
+        guard !isRepeat, keyCode == self.keyCode else { return false }
+        return flags.intersection(Self.relevantFlags) == self.flags
+    }
+}
+
+/// The event tap's decision for one keyboard event. Every event stays blocked either way;
+/// this only says whether it is the off press.
+nonisolated enum CleaningKeyGate {
+    static func isOffPress(type: CGEventType, keyCode: UInt16, flags: CGEventFlags, isRepeat: Bool, shortcut: CleaningOffShortcut?) -> Bool {
+        guard type == .keyDown, let shortcut else { return false }
+        return shortcut.matches(keyCode: keyCode, flags: flags, isRepeat: isRepeat)
+    }
 }
 
 /// Only the production implementation creates a CGEventTap. It reports gesture
@@ -70,12 +112,14 @@ protocol CleaningInputBlocking: AnyObject {
     var onPointerUp: (() -> Void)? { get set }
     var onPointerMoved: (() -> Void)? { get set }
     var onFailure: (() -> Void)? { get set }
+    /// The exact recorded off combo was pressed. Carries no key contents.
+    var onOffShortcut: (() -> Void)? { get set }
     func start(configuration: CleaningInputConfiguration) -> Bool
     func stop()
 }
 
 protocol CleaningOverlayHandling: AnyObject {
-    func show(appearance: CleaningScreenAppearance)
+    func show(appearance: CleaningScreenAppearance, offShortcutHint: String?)
     func update(remaining: TimeInterval, holdProgress: Double)
     func screensChanged()
     func hide()
@@ -99,12 +143,22 @@ enum CleaningModeCopy {
     static let safety = "Cleaning Mode always ends when the timer runs out. Your power button and Touch ID still work. This is not a privacy lock."
 }
 
+nonisolated enum CleaningShortcutCopy {
+    static let rowTitle = "Turn Cleaning Mode on or off"
+    static let rowDescription = "Press once to start, press again to finish. No shortcut is set by default."
+    static let twoModifierRule = "Use at least two of \u{2303} \u{2325} \u{21E7} \u{2318} so wiping the keys can't turn this off. The timer and the 3-second hold still work."
+    static func overlayHint(_ comboText: String) -> String { "or press \(comboText) again" }
+}
+
 @MainActor
 final class CleaningModeController: ObservableObject {
     // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
     nonisolated deinit {}
     static let shared = CleaningModeController(defaults: .standard)
     static let holdSeconds: TimeInterval = 3
+    /// The off combo is ignored this long after a session starts, so the press (or key
+    /// repeat) that started cleaning can't end it.
+    static let offShortcutGrace: TimeInterval = 1
 
     @Published private(set) var settings: CleaningModeSettings
     @Published private(set) var isActive = false
@@ -121,6 +175,8 @@ final class CleaningModeController: ObservableObject {
     let awake: CleaningAwakeHandling
     let otherInput: CleaningOtherInputHandling
     private let defaults: UserDefaults
+    private let offShortcutCombo: () -> KeyCombo?
+    private var sessionStartedAt: TimeInterval?
     private var timer: Timer?
     private var observers: [NSObjectProtocol] = []
     private var holdStartedAt: TimeInterval?
@@ -132,33 +188,41 @@ final class CleaningModeController: ObservableObject {
 
     var canStart: Bool { permissionState == .ready && !isActive }
 
+    /// Defaults are resolved inside the main-actor init body rather than as
+    /// default-argument expressions, which Swift evaluates outside the actor.
     init(defaults: UserDefaults,
-         permissions: CleaningPermissionHandling = CleaningPermissions(),
-         blocker: CleaningInputBlocking = CleaningInputBlocker(),
-         overlay: CleaningOverlayHandling = CleaningOverlayController.shared,
-         awake: CleaningAwakeHandling = CleaningAwakeAssertion(),
-         otherInput: CleaningOtherInputHandling = CleaningOtherInputCoordinator()) {
+         permissions: CleaningPermissionHandling? = nil,
+         blocker: CleaningInputBlocking? = nil,
+         overlay: CleaningOverlayHandling? = nil,
+         awake: CleaningAwakeHandling? = nil,
+         otherInput: CleaningOtherInputHandling? = nil,
+         offShortcut: (() -> KeyCombo?)? = nil) {
         self.defaults = defaults
-        self.permissions = permissions
-        self.blocker = blocker
-        self.overlay = overlay
-        self.awake = awake
-        self.otherInput = otherInput
+        self.offShortcutCombo = offShortcut ?? { ShortcutManager.shared.shortcuts[.cleaningMode] }
+        self.permissions = permissions ?? CleaningPermissions()
+        self.blocker = blocker ?? CleaningInputBlocker()
+        self.overlay = overlay ?? CleaningOverlayController.shared
+        self.awake = awake ?? CleaningAwakeAssertion()
+        self.otherInput = otherInput ?? CleaningOtherInputCoordinator()
         self.settings = CleaningModeSettings.load(from: defaults)
         self.blocker.onPointerDown = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.pointerDown(at: now) }
+            Task { @MainActor [weak self] in self?.pointerDown(at: now) }
         }
         self.blocker.onPointerUp = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.pointerUp(at: now) }
+            Task { @MainActor [weak self] in self?.pointerUp(at: now) }
         }
         self.blocker.onPointerMoved = { [weak self] in
             let now = Date().timeIntervalSinceReferenceDate
-            Task { @MainActor in self?.pointerMoved(at: now) }
+            Task { @MainActor [weak self] in self?.pointerMoved(at: now) }
         }
         self.blocker.onFailure = { [weak self] in
-            Task { @MainActor in self?.inputMechanismFailed() }
+            Task { @MainActor [weak self] in self?.inputMechanismFailed() }
+        }
+        self.blocker.onOffShortcut = { [weak self] in
+            let now = Date().timeIntervalSinceReferenceDate
+            Task { @MainActor [weak self] in self?.offShortcutPressed(at: now) }
         }
         refreshPermissions()
     }
@@ -171,17 +235,17 @@ final class CleaningModeController: ObservableObject {
         currentTime = Date().timeIntervalSinceReferenceDate
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.settingsBecameActive() }
+            Task { @MainActor [weak self] in self?.settingsBecameActive() }
         })
         observers.append(center.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.screensChanged() }
+            Task { @MainActor [weak self] in self?.screensChanged() }
         })
         observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.cleanup() }
+            Task { @MainActor [weak self] in self?.cleanup() }
         })
         for name in ["com.apple.screenIsLocked", "com.apple.sessionDidResignActive"] {
             observers.append(DistributedNotificationCenter.default().addObserver(forName: NSNotification.Name(name), object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.screenLocked() }
+                Task { @MainActor [weak self] in self?.screenLocked() }
             })
         }
         // A repeat interval faster than the three-second gesture and all four
@@ -222,11 +286,13 @@ final class CleaningModeController: ObservableObject {
             end(reason: .inputFailure)
             return .inputUnavailable
         }
-        guard blocker.start(configuration: CleaningInputConfiguration(blockPointer: settings.blockPointer && settings.screenAppearance == .dimmed)) else {
+        let offShortcut = currentOffShortcut()
+        guard blocker.start(configuration: CleaningInputConfiguration(blockPointer: settings.blockPointer && settings.screenAppearance == .dimmed, offShortcut: offShortcut.shortcut)) else {
             end(reason: .inputFailure)
             return .inputUnavailable
         }
         currentTime = now
+        sessionStartedAt = now
         endTime = now + duration
         scheduleDeadline(at: now + duration)
         displayRemaining = duration
@@ -244,7 +310,7 @@ final class CleaningModeController: ObservableObject {
         // delivered normally rather than treated as a cleaning release.
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isActive, self.sessionGeneration == generation else { return }
-            self.overlay.show(appearance: self.settings.screenAppearance)
+            self.overlay.show(appearance: self.settings.screenAppearance, offShortcutHint: offShortcut.hint)
             self.overlay.update(remaining: self.remaining(at: Date().timeIntervalSinceReferenceDate), holdProgress: 0)
         }
         return .started
@@ -317,6 +383,36 @@ final class CleaningModeController: ObservableObject {
 
     func stop(reason: CleaningEndReason) { end(reason: reason) }
 
+    /// The recorded on/off combo as the event tap should match it, and the overlay hint.
+    /// Both are nil when no combo is recorded or it has fewer than two modifiers.
+    func currentOffShortcut() -> (shortcut: CleaningOffShortcut?, hint: String?) {
+        guard let combo = offShortcutCombo(),
+              let shortcut = CleaningOffShortcut(keyCode: combo.keyCode, modifierFlags: combo.nsModifierFlags) else {
+            return (nil, nil)
+        }
+        return (shortcut, CleaningShortcutCopy.overlayHint(combo.displayString))
+    }
+
+    /// The event tap saw the exact off combo. Ends cleaning unless it is still inside
+    /// the start grace. The timer and the 3-second hold are unaffected either way.
+    func offShortcutPressed(at now: TimeInterval) {
+        guard isActive, let sessionStartedAt else { return }
+        guard now - sessionStartedAt >= Self.offShortcutGrace else { return }
+        stop(reason: .manual)
+    }
+
+    /// The Carbon shortcut path. It only reaches here while cleaning is off, because
+    /// Usage Shelf's own shortcuts are suspended during a session; the off press then
+    /// arrives through the event tap instead.
+    @discardableResult
+    func toggleFromShortcut(now: TimeInterval) -> CleaningStartResult? {
+        if isActive {
+            offShortcutPressed(at: now >= 0 ? now : Date().timeIntervalSinceReferenceDate)
+            return nil
+        }
+        return start(now: now)
+    }
+
     private func end(reason: CleaningEndReason) {
         // Capture belongs to this process and is released first on every path.
         blocker.stop()
@@ -328,6 +424,7 @@ final class CleaningModeController: ObservableObject {
         overlay.hide()
         holdsPointer = false
         holdStartedAt = nil
+        sessionStartedAt = nil
         isActive = false
         sessionGeneration += 1
         endTime = nil
@@ -399,5 +496,6 @@ final class CleaningModeController: ObservableObject {
         blocker.onPointerUp = nil
         blocker.onPointerMoved = nil
         blocker.onFailure = nil
+        blocker.onOffShortcut = nil
     }
 }

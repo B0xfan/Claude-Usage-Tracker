@@ -15,10 +15,10 @@ enum CleaningModePreviewRenderer {
         try render(content, scheme: scheme, size: CGSize(width: 720, height: 1000), to: url)
     }
 
-    static func renderActive(controller: CleaningModeController, scheme: ColorScheme, to url: URL) throws {
+    static func renderActive(controller: CleaningModeController, scheme: ColorScheme, offShortcutHint: String? = nil, to url: URL) throws {
         let view = ZStack {
             LinearGradient(colors: scheme == .dark ? [.black, .indigo] : [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
-            CleaningSessionView(appearance: controller.settings.screenAppearance, blockPointer: controller.settings.blockPointer, remaining: controller.displayRemaining ?? 42, holdProgress: controller.displayHoldProgress)
+            CleaningSessionView(appearance: controller.settings.screenAppearance, blockPointer: controller.settings.blockPointer, remaining: controller.displayRemaining ?? 42, holdProgress: controller.displayHoldProgress, offShortcutHint: offShortcutHint)
         }
         .frame(width: 1100, height: 700)
         try render(view, scheme: scheme, size: CGSize(width: 1100, height: 700), to: url)
@@ -30,6 +30,7 @@ enum CleaningModePreviewRenderer {
             Divider().padding(.vertical, 4)
             previewMenuRow("Refresh")
             Divider().padding(.vertical, 4)
+            previewMenuRow("Grab Text from Screen")
             previewMenuRow("Start Cleaning Mode")
             Divider().padding(.vertical, 4)
             previewMenuRow("Settings                         ⌘,")
@@ -40,11 +41,11 @@ enum CleaningModePreviewRenderer {
         try render(view, scheme: scheme, size: nil, to: url)
     }
 
-    static func renderShortcuts(scheme: ColorScheme, to url: URL) throws {
+    static func renderShortcuts(scheme: ColorScheme, cleaningCombo: KeyCombo? = nil, to url: URL) throws {
         let rows = VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
             SettingsPageHeader(title: "Shortcuts", subtitle: "Keyboard shortcuts for common actions")
-            CleaningShortcutPreviewContent()
-            Text("The shortcut never replaces the timer or the 3-second mouse or trackpad hold.")
+            CleaningShortcutPreviewContent(combo: cleaningCombo)
+            Text(CleaningShortcutCopy.twoModifierRule)
                 .font(DesignTokens.Typography.caption).foregroundColor(.secondary)
         }.padding(28)
         let content = HStack(spacing: 0) {
@@ -90,11 +91,13 @@ enum CleaningModePreviewRenderer {
 /// Deterministic detached rendering. Uses the same row components as Shortcuts
 /// Settings but never reads a real profile, creates a global hotkey, or an event tap.
 struct CleaningShortcutPreviewContent: View {
+    var combo: KeyCombo? = nil
     var body: some View {
         VStack(spacing: DesignTokens.Spacing.small) {
             row(icon: "person.and.arrow.left.and.arrow.right", title: "Next profile", description: "Switch to the next usage profile", combo: nil)
             row(icon: "sun.max", title: "Keep awake", description: "Toggle Keep awake with the last duration", combo: KeyCombo(keyCode: 40, modifierFlags: [.control, .option, .command]))
-            row(icon: "sparkles", title: "Start Cleaning Mode", description: "Start with your saved cleaning choices. No shortcut is set by default.", combo: nil)
+            row(icon: "sparkles", title: CleaningShortcutCopy.rowTitle, description: CleaningShortcutCopy.rowDescription, combo: combo)
+            row(icon: "text.viewfinder", title: TextGrabCopy.shortcutRowTitle, description: TextGrabCopy.shortcutRowDescription, combo: nil)
         }
     }
 

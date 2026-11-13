@@ -16,6 +16,8 @@ struct ShortcutsSettingsView: View {
     @State private var nextProfileCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.nextProfile]
     @State private var cleaningModeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.cleaningMode]
     @State private var cleaningModeWarning: String?
+    @State private var textGrabCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.textGrab]
+    @State private var textGrabWarning: String?
 
     var body: some View {
         ScrollView {
@@ -84,15 +86,27 @@ struct ShortcutsSettingsView: View {
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                             shortcutRow(
                                 icon: "sparkles",
-                                title: "Start Cleaning Mode",
-                                description: "Start with your saved cleaning choices. No shortcut is set by default.",
+                                title: CleaningShortcutCopy.rowTitle,
+                                description: CleaningShortcutCopy.rowDescription,
                                 combo: $cleaningModeCombo,
                                 action: .cleaningMode,
                                 warning: $cleaningModeWarning
                             )
                             if let cleaningModeWarning { ShortcutWarningView(message: cleaningModeWarning) }
-                            Text("The shortcut never replaces the timer or the 3-second mouse or trackpad hold.")
+                            Text(CleaningShortcutCopy.twoModifierRule)
                                 .font(DesignTokens.Typography.caption).foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                            shortcutRow(
+                                icon: "text.viewfinder",
+                                title: TextGrabCopy.shortcutRowTitle,
+                                description: TextGrabCopy.shortcutRowDescription,
+                                combo: $textGrabCombo,
+                                action: .textGrab,
+                                warning: $textGrabWarning
+                            )
+                            if let textGrabWarning { ShortcutWarningView(message: textGrabWarning) }
                         }
                     }
                 }
@@ -154,15 +168,11 @@ struct ShortcutsSettingsView: View {
 
             Spacer()
 
-            ShortcutRecorderView(keyCombo: Binding(
-                get: { combo.wrappedValue },
-                set: { newValue in
-                    let previous = combo.wrappedValue
-                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
-                    warning?.wrappedValue = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
-                    if result != .success { combo.wrappedValue = previous }
-                }
-            ))
+            ShortcutRecorderView(
+                keyCombo: ShortcutBinding.make(for: action, combo: combo, warning: warning),
+                minimumModifiers: action.minimumModifierCount,
+                onRefused: { warning?.wrappedValue = resultWarning(.needsTwoModifiers, combo: KeyCombo(keyCode: 0, modifierFlags: [])) }
+            )
         }
         .padding(DesignTokens.Spacing.medium)
         .background(

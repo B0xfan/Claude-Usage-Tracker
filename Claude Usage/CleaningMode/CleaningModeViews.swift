@@ -103,6 +103,8 @@ struct CleaningSessionView: View {
     var blockPointer = true
     let remaining: TimeInterval
     let holdProgress: Double
+    /// "or press ⌃⌥⌘C again" with John's real combo; nil when no on/off shortcut is recorded.
+    var offShortcutHint: String? = nil
 
     private var countdown: String {
         let total = Int(ceil(max(0, remaining)))
@@ -167,6 +169,12 @@ struct CleaningSessionView: View {
                 }
             }
             .frame(height: 4).padding(.horizontal, 24)
+            if let offShortcutHint {
+                Text(offShortcutHint)
+                    .font(.system(size: 13, weight: .medium)).multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundColor(.white.opacity(0.85))
+            }
         }
     }
 }

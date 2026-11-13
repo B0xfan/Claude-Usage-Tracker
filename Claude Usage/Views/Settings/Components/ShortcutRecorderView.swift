@@ -10,9 +10,14 @@ import SwiftUI
 struct ShortcutRecorderView: View {
     @Binding var keyCombo: KeyCombo?
     var previewRecording = false
+    /// Cleaning Mode's on/off shortcut needs two of Control, Option, Shift and Command.
+    var minimumModifiers = 1
+    /// Called when a key is pressed with too few modifiers for `minimumModifiers` above one.
+    var onRefused: (() -> Void)? = nil
 
-    static func accepts(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
-        !modifiers.intersection([.command, .option, .control, .shift]).isEmpty && ![54, 55, 56, 57, 58, 59, 60, 61, 62, 63].contains(keyCode)
+    static func accepts(keyCode: UInt16, modifiers: NSEvent.ModifierFlags, minimumModifiers: Int = 1) -> Bool {
+        let held = [NSEvent.ModifierFlags.command, .option, .control, .shift].filter { modifiers.contains($0) }.count
+        return held >= max(1, minimumModifiers) && ![54, 55, 56, 57, 58, 59, 60, 61, 62, 63].contains(keyCode)
     }
     @State private var isRecording = false
     @State private var localMonitor: Any?
@@ -92,16 +97,19 @@ struct ShortcutRecorderView: View {
                 return nil
             }
 
-            // Require at least one modifier key
-            let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
-            guard !modifiers.isEmpty else {
-                return nil // Ignore plain keys
-            }
-
             // Don't capture modifier-only presses (no actual key)
             let modifierOnlyKeyCodes: Set<UInt16> = [54, 55, 56, 57, 58, 59, 60, 61, 62, 63]
             guard !modifierOnlyKeyCodes.contains(event.keyCode) else {
                 return event
+            }
+
+            // Require at least one modifier key (two for Cleaning Mode's on/off shortcut)
+            guard Self.accepts(keyCode: event.keyCode, modifiers: event.modifierFlags, minimumModifiers: minimumModifiers) else {
+                if minimumModifiers > 1 {
+                    onRefused?()
+                    stopRecording()
+                }
+                return nil // Ignore plain keys
             }
 
             keyCombo = KeyCombo(keyCode: event.keyCode, modifierFlags: event.modifierFlags)
@@ -128,6 +136,24 @@ struct ShortcutRecorderView: View {
     }
     .padding()
     .frame(width: 300)
+}
+
+/// One saved shortcut edited from any page: the Shortcuts list and a feature's own page
+/// both write through ShortcutManager, so clearing either clears both.
+enum ShortcutBinding {
+    static func make(for action: ShortcutAction, combo: Binding<KeyCombo?>, warning: Binding<String?>?, manager: ShortcutManager? = nil) -> Binding<KeyCombo?> {
+        // Resolved here, on the main actor, not as a default-argument expression.
+        let manager = manager ?? ShortcutManager.shared
+        return Binding(
+            get: { combo.wrappedValue },
+            set: { newValue in
+                let previous = combo.wrappedValue
+                let result = manager.setShortcut(newValue, for: action)
+                warning?.wrappedValue = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
+                combo.wrappedValue = result == .success ? newValue : previous
+            }
+        )
+    }
 }
 
 enum ShortcutWarningStyle {

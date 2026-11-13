@@ -12,6 +12,8 @@ final class CleaningModeTests: XCTestCase {
     private var awake: CleaningAwakeSpy!
     private var otherInput: CleaningOtherInputSpy!
     private var controller: CleaningModeController!
+    /// The recorded on/off combo the controller sees; nil like fresh preferences.
+    private var offCombo: KeyCombo?
 
     override func setUp() async throws {
         suite = "CleaningModeTests-\(UUID().uuidString)"
@@ -22,6 +24,7 @@ final class CleaningModeTests: XCTestCase {
         overlay = CleaningOverlaySpy()
         awake = CleaningAwakeSpy()
         otherInput = CleaningOtherInputSpy()
+        offCombo = nil
         controller = makeController()
     }
 
@@ -38,7 +41,7 @@ final class CleaningModeTests: XCTestCase {
     }
 
     private func makeController() -> CleaningModeController {
-        CleaningModeController(defaults: defaults, permissions: permissions, blocker: blocker, overlay: overlay, awake: awake, otherInput: otherInput)
+        CleaningModeController(defaults: defaults, permissions: permissions, blocker: blocker, overlay: overlay, awake: awake, otherInput: otherInput, offShortcut: { [weak self] in self?.offCombo })
     }
 
     private func readyStart(now: TimeInterval = 100) {
@@ -46,9 +49,9 @@ final class CleaningModeTests: XCTestCase {
         XCTAssertTrue(controller.isActive)
     }
 
-    // 1 and 23
+    // 1 and 23 (Text Grab now sits directly below Cleaning Mode)
     func testSettingsSidebarOrderAndEnglishCopy() {
-        XCTAssertEqual(SettingsSection.allCases.filter { !$0.isProfileSetting && !$0.isCredential && !$0.isBottomBarItem }.map(\.rawValue).suffix(2), ["keepAwake", "cleaningMode"])
+        XCTAssertEqual(SettingsSection.allCases.filter { !$0.isProfileSetting && !$0.isCredential && !$0.isBottomBarItem }.map(\.rawValue).suffix(3), ["keepAwake", "cleaningMode", "textGrab"])
         XCTAssertEqual(SettingsSection.cleaningMode.title, "Cleaning Mode")
         XCTAssertTrue(SettingsSection.cleaningMode.description.contains("Clean your keyboard"))
         XCTAssertEqual(CleaningModeCopy.safety, "Cleaning Mode always ends when the timer runs out. Your power button and Touch ID still work. This is not a privacy lock.")
@@ -118,7 +121,7 @@ final class CleaningModeTests: XCTestCase {
         let combo = KeyCombo(keyCode: 8, modifierFlags: [.command, .option])
         XCTAssertEqual(manager.setShortcut(combo, for: .cleaningMode), .success)
         XCTAssertEqual(ShortcutManager(store: store, registrar: registrar.register).shortcuts[.cleaningMode], combo)
-        XCTAssertEqual(manager.setShortcut(combo, for: .keepAwake), .duplicate("Start Cleaning Mode"))
+        XCTAssertEqual(manager.setShortcut(combo, for: .keepAwake), .duplicate("Turn Cleaning Mode on or off"))
     }
 
     // 9, 10 and 11
@@ -324,6 +327,7 @@ final class CleaningInputBlockerSpy: CleaningInputBlocking {
     var onPointerUp: (() -> Void)?
     var onPointerMoved: (() -> Void)?
     var onFailure: (() -> Void)?
+    var onOffShortcut: (() -> Void)?
     func start(configuration: CleaningInputConfiguration) -> Bool {
         startCount += 1
         lastConfiguration = configuration
@@ -337,7 +341,8 @@ final class CleaningOverlaySpy: CleaningOverlayHandling {
     private(set) var updateCount = 0
     private(set) var hideCount = 0
     private(set) var screenRefreshCount = 0
-    func show(appearance: CleaningScreenAppearance) { updateCount += 1 }
+    private(set) var hints: [String?] = []
+    func show(appearance: CleaningScreenAppearance, offShortcutHint: String?) { updateCount += 1; hints.append(offShortcutHint) }
     func update(remaining: TimeInterval, holdProgress: Double) { updateCount += 1 }
     func screensChanged() { screenRefreshCount += 1 }
     func hide() { hideCount += 1 }

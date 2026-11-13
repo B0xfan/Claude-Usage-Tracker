@@ -75,6 +75,7 @@ class MenuBarManager: NSObject, ObservableObject {
     private let autoStartService = AutoStartSessionService.shared
     let keepAwake = KeepAwakeController.shared
     let cleaningMode = CleaningModeController.shared
+    let textGrab = TextGrabController.shared
     private var cleaningSettingsObserver: NSObjectProtocol?
 
     // Combine cancellables for profile observation
@@ -265,8 +266,11 @@ class MenuBarManager: NSObject, ObservableObject {
         shortcutManager.onToggleKeepAwake = { [weak self] in
             self?.keepAwake.toggle()
         }
-        shortcutManager.onStartCleaningMode = { [weak self] in
-            self?.startCleaningMode()
+        shortcutManager.onToggleCleaningMode = { [weak self] in
+            self?.toggleCleaningModeFromShortcut()
+        }
+        shortcutManager.onTextGrab = { [weak self] in
+            self?.startTextGrab()
         }
         shortcutManager.startListening()
         cleaningMode.startListening()
@@ -278,6 +282,23 @@ class MenuBarManager: NSObject, ObservableObject {
                 self.presentCleaningSettings()
             }
         .store(in: &cancellables)
+        // Text Grab does nothing while cleaning, and a selection in progress is dropped
+        // the moment Cleaning Mode starts.
+        cleaningMode.$isActive
+            .removeDuplicates()
+            .filter { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.textGrab.cleaningModeStarted() }
+            .store(in: &cancellables)
+        if let feedback = textGrab.feedback as? TextGrabFeedback {
+            feedback.anchorProvider = { [weak self] in self?.ringsScreenRect() }
+        }
+    }
+
+    /// Where the Usage Shelf rings sit on screen, for the Text Grab toast.
+    private func ringsScreenRect() -> CGRect? {
+        guard let button = statusBarUIManager?.primaryButton, let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
     }
 
     func cleanup() {
@@ -665,10 +686,9 @@ class MenuBarManager: NSObject, ObservableObject {
 
         menu.addItem(NSMenuItem.separator())
 
-        let cleaningItem = NSMenuItem(title: cleaningMode.isActive ? "Cleaning Mode is on" : "Start Cleaning Mode", action: #selector(startCleaningMode), keyEquivalent: "")
-        cleaningItem.target = self
-        cleaningItem.isEnabled = !cleaningMode.isActive
-        menu.addItem(cleaningItem)
+        for item in Self.makeTextGrabAndCleaningItems(cleaningActive: cleaningMode.isActive, textGrabShortcut: ShortcutManager.shared.shortcuts[.textGrab], target: self) {
+            menu.addItem(item)
+        }
 
         menu.addItem(NSMenuItem.separator())
 
@@ -697,6 +717,49 @@ class MenuBarManager: NSObject, ObservableObject {
         keepAwake.toggle()
     }
 
+    /// Grab Text from Screen sits directly above Start Cleaning Mode and shows the
+    /// recorded shortcut beside it when one is set.
+    static func makeTextGrabAndCleaningItems(cleaningActive: Bool, textGrabShortcut: KeyCombo?, target: AnyObject?) -> [NSMenuItem] {
+        let grabItem = NSMenuItem(title: TextGrabCopy.menuItemTitle, action: #selector(MenuBarManager.contextMenuTextGrab), keyEquivalent: "")
+        grabItem.target = target
+        grabItem.isEnabled = !cleaningActive
+        if let combo = textGrabShortcut, let key = Self.menuKeyEquivalent(for: combo.keyCode) {
+            grabItem.keyEquivalent = key
+            grabItem.keyEquivalentModifierMask = combo.nsModifierFlags
+        }
+        let cleaningItem = NSMenuItem(title: cleaningActive ? "Cleaning Mode is on" : "Start Cleaning Mode", action: #selector(MenuBarManager.startCleaningMode), keyEquivalent: "")
+        cleaningItem.target = target
+        cleaningItem.isEnabled = !cleaningActive
+        return [grabItem, cleaningItem]
+    }
+
+    /// The menu shows a shortcut only for keys it can draw as a key equivalent.
+    static func menuKeyEquivalent(for keyCode: UInt16) -> String? {
+        let name = KeyCombo.keyName(for: keyCode)
+        guard name.count == 1, let scalar = name.unicodeScalars.first, scalar.isASCII else { return nil }
+        return name.lowercased()
+    }
+
+    @objc private func contextMenuTextGrab() {
+        // Let the menu close before the overlay covers the screens.
+        DispatchQueue.main.async { [weak self] in self?.startTextGrab() }
+    }
+
+    private func startTextGrab() {
+        if textGrab.start() == .permissionMissing {
+            textGrab.consumeSettingsRequest()
+            presentSettings(section: .textGrab)
+        }
+    }
+
+    private func toggleCleaningModeFromShortcut() {
+        if cleaningMode.isActive {
+            cleaningMode.toggleFromShortcut(now: Date().timeIntervalSinceReferenceDate)
+        } else {
+            startCleaningMode()
+        }
+    }
+
     @objc private func startCleaningMode() {
         // Defer capture until AppKit has delivered the initiating mouse release.
         let result = cleaningMode.start(now: -1)
@@ -705,6 +768,10 @@ class MenuBarManager: NSObject, ObservableObject {
 
     private func presentCleaningSettings() {
         cleaningMode.consumeSettingsRequest()
+        presentSettings(section: .cleaningMode)
+    }
+
+    private func presentSettings(section: SettingsSection) {
         closePopoverOrWindow()
         NSApp.setActivationPolicy(.regular)
         let window: NSWindow
@@ -721,7 +788,11 @@ class MenuBarManager: NSObject, ObservableObject {
         }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        NotificationCenter.default.post(name: .selectSettingsSection, object: SettingsSection.cleaningMode)
+        NotificationCenter.default.post(name: .selectSettingsSection, object: section)
+        // A Settings window created just now subscribes on its first layout pass.
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .selectSettingsSection, object: section)
+        }
     }
 
     private func registerCleaningSettingsObserver() {

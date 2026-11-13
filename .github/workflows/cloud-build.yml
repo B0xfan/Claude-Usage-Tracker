@@ -18,8 +18,6 @@ jobs:
       matrix:
         include:
           - { os: macos-15-intel, xcode: "26.3" }
-          - { os: macos-15, xcode: "26.3" }
-          - { os: macos-26, xcode: "26.6" }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
@@ -58,6 +56,8 @@ jobs:
             -derivedDataPath build \
             -destination "platform=macOS" \
             -only-testing:"Claude UsageTests/CleaningModeTests" \
+            -only-testing:"Claude UsageTests/CleaningModeShortcutTests" \
+            -only-testing:"Claude UsageTests/TextGrabTests" \
             -only-testing:"Claude UsageTests/TopShelfTests" \
             -only-testing:"Claude UsageTests/TopShelfSettingsPageTests" \
             -resultBundlePath "CleaningMode.xcresult" \
@@ -112,6 +112,7 @@ jobs:
           cp -R "build/Build/Products/Release/Usage Shelf.app" artifacts/
           cp -R "/tmp/usage-shelf-cleaning-mode-shots" artifacts/cleaning-mode-shots
           cp -R "/tmp/usage-shelf-settings-shots" artifacts/settings-shots
+          cp -R "/tmp/usage-shelf-text-grab-shots" artifacts/text-grab-shots
           test -f "artifacts/Usage Shelf.app/Contents/MacOS/Usage Shelf"
           lipo -info "artifacts/Usage Shelf.app/Contents/MacOS/Usage Shelf"
 

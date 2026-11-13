@@ -15,6 +15,8 @@ enum ShortcutSetResult: Equatable {
     case success
     case duplicate(String)
     case registrationFailed
+    /// Cleaning Mode's on/off shortcut passes the keyboard pause, so it needs two or more modifiers.
+    case needsTwoModifiers
 }
 
 protocol ShortcutStoring {
@@ -29,6 +31,7 @@ func resultWarning(_ result: ShortcutSetResult, combo: KeyCombo) -> String? {
     case .success: return nil
     case .duplicate(let name): return "Already used by \(name). Choose another shortcut."
     case .registrationFailed: return "This shortcut is already in use. Choose another one."
+    case .needsTwoModifiers: return CleaningShortcutCopy.twoModifierRule
     }
 }
 
@@ -41,6 +44,7 @@ enum ShortcutAction: String, CaseIterable {
     case nextProfile
     case keepAwake
     case cleaningMode
+    case textGrab
 
     var displayName: String {
         switch self {
@@ -49,8 +53,18 @@ enum ShortcutAction: String, CaseIterable {
         case .openSettings: return "Open Settings"
         case .nextProfile: return "Next profile"
         case .keepAwake: return "Keep awake"
-        case .cleaningMode: return "Start Cleaning Mode"
+        case .cleaningMode: return "Turn Cleaning Mode on or off"
+        case .textGrab: return "Grab text from screen"
         }
+    }
+
+    /// The fewest of Control, Option, Shift and Command a recorded combo must hold.
+    var minimumModifierCount: Int { self == .cleaningMode ? 2 : 1 }
+
+    /// Optional shortcuts that are removed again when macOS refuses to register them,
+    /// so setShortcut can report "already in use" and keep the previous combo.
+    var dropsComboWhenRegistrationFails: Bool {
+        self == .keepAwake || self == .cleaningMode || self == .textGrab
     }
 }
 
@@ -65,6 +79,12 @@ struct KeyCombo: Codable, Equatable, Hashable {
 
     var nsModifierFlags: NSEvent.ModifierFlags {
         NSEvent.ModifierFlags(rawValue: modifierFlags)
+    }
+
+    /// How many of Control, Option, Shift and Command this combo holds.
+    var modifierCount: Int {
+        let flags = nsModifierFlags
+        return [NSEvent.ModifierFlags.control, .option, .shift, .command].filter { flags.contains($0) }.count
     }
 
     /// Convert NSEvent modifier flags to Carbon modifier flags
@@ -200,7 +220,8 @@ struct KeyCombo: Codable, Equatable, Hashable {
     var onOpenSettings: (() -> Void)?
     var onNextProfile: (() -> Void)?
     var onToggleKeepAwake: (() -> Void)?
-    var onStartCleaningMode: (() -> Void)?
+    var onToggleCleaningMode: (() -> Void)?
+    var onTextGrab: (() -> Void)?
 
     private convenience init() {
         self.init(store: SharedDataStore.shared)
@@ -221,6 +242,9 @@ struct KeyCombo: Codable, Equatable, Hashable {
     @discardableResult
     func setShortcut(_ combo: KeyCombo?, for action: ShortcutAction) -> ShortcutSetResult {
         if let combo {
+            if combo.modifierCount < action.minimumModifierCount {
+                return .needsTwoModifiers
+            }
             if let duplicate = shortcuts.first(where: { $0.key != action && $0.value == combo }) {
                 return .duplicate(duplicate.key.displayName)
             }
@@ -290,7 +314,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
         let id = EventHotKeyID(signature: Self.hotKeySignature, id: nextHotKeyID)
         let (status, ref) = registrar(combo, action, id)
         guard status == noErr, let ref else {
-            if action == .keepAwake || action == .cleaningMode { shortcuts.removeValue(forKey: action) }
+            if action.dropsComboWhenRegistrationFails { shortcuts.removeValue(forKey: action) }
             LoggingService.shared.log("ShortcutManager: Failed to register hotkey \(combo.displayString), status=\(status)")
             return
         }
@@ -314,7 +338,8 @@ struct KeyCombo: Codable, Equatable, Hashable {
         case .openSettings: onOpenSettings?()
         case .nextProfile: onNextProfile?()
         case .keepAwake: onToggleKeepAwake?()
-        case .cleaningMode: onStartCleaningMode?()
+        case .cleaningMode: onToggleCleaningMode?()
+        case .textGrab: onTextGrab?()
         }
     }
 }
