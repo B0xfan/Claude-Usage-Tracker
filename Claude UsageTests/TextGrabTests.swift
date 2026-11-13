@@ -101,6 +101,16 @@ final class TextGrabTests: XCTestCase {
                 XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(name).path))
             }
         }
+        // Capture sound row (sound spec check 1): switch on, Submarine chosen, light and dark.
+        permissions.granted = true
+        controller.refreshPermission()
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.submarine)
+        for scheme in [ColorScheme.light, .dark] {
+            let name = "settings-ready-sound-on-\(scheme == .light ? "light" : "dark").png"
+            try TextGrabPreviewRenderer.renderSettings(controller: controller, manager: manager, scheme: scheme, to: folder.appendingPathComponent(name))
+            XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(name).path))
+        }
         for (content, name) in [(TextGrabToastContent.copied(title: "Copied 3 lines", preview: "Sunset Kayak Tour\nSaturday 4:30 PM ..."), "copied"), (TextGrabToastContent.noText, "no-text")] {
             for scheme in [ColorScheme.light, .dark] {
                 try TextGrabPreviewRenderer.renderToast(content, scheme: scheme, to: folder.appendingPathComponent("toast-\(name)-\(scheme == .light ? "light" : "dark").png"))
@@ -424,7 +434,142 @@ final class TextGrabTests: XCTestCase {
         controller.update(\.playSound, value: true)
         await grab(threeLines)
         await grab([])
-        XCTAssertEqual(feedback.sounds, [.copied, .notFound])
+        XCTAssertEqual(feedback.sounds, [.copied(.glass), .notFound])
+    }
+
+    // MARK: Capture sound setting (text-grab-sound-spec.md checks 1-13)
+
+    private let builtInSounds = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero",
+                                 "Morse", "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
+
+    // Sound 1, 2 and 11
+    func testCaptureSoundRowCopyDefaultAndTheFourteenSounds() {
+        XCTAssertEqual(TextGrabCopy.copiedSound, "Sound when text is copied")
+        XCTAssertEqual(TextGrabCopy.copiedSoundDetail, "Choose a built-in Mac sound. The speaker plays it once.")
+        XCTAssertEqual(TextGrabCopy.playCopiedSound, "Play sound")
+        XCTAssertEqual(TextGrabCaptureSound.allCases.map(\.name), builtInSounds)
+        for sound in TextGrabCaptureSound.allCases {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: "/System/Library/Sounds/\(sound.name).aiff"), "\(sound.name) is not a built-in Mac sound")
+        }
+        XCTAssertFalse(controller.settings.playSound)
+        XCTAssertEqual(controller.settings.copiedSound, .glass)
+        XCTAssertFalse(controller.copiedSoundControlsEnabled)
+    }
+
+    // Sound 2
+    func testDimmedSoundControlsDoNothingWhileSoundIsOff() {
+        controller.chooseCopiedSound(.submarine)
+        controller.previewCopiedSound()
+        XCTAssertEqual(feedback.sounds, [])
+        XCTAssertEqual(controller.settings.copiedSound, .glass)
+        XCTAssertNil(defaults.object(forKey: TextGrabSettings.Key.copiedSound))
+    }
+
+    // Sound 3
+    func testTurningTheSwitchOnPlaysNothing() {
+        controller.update(\.playSound, value: true)
+        XCTAssertTrue(controller.copiedSoundControlsEnabled)
+        XCTAssertEqual(feedback.sounds, [])
+    }
+
+    // Sound 4
+    func testChoosingASoundPlaysItOnceAndSavesIt() {
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.submarine)
+        XCTAssertEqual(feedback.sounds, [.copied(.submarine)])
+        XCTAssertEqual(controller.settings.copiedSound, .submarine)
+        XCTAssertEqual(defaults.string(forKey: TextGrabSettings.Key.copiedSound), "Submarine")
+    }
+
+    // Sound 5
+    func testSpeakerPlaysTheSelectedSoundOnceWithoutAGrab() {
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.hero)
+        controller.previewCopiedSound()
+        XCTAssertEqual(feedback.sounds, [.copied(.hero), .copied(.hero)])
+        XCTAssertEqual(selection.beginCount, 0)
+        XCTAssertEqual(capturer.captures.count, 0)
+        XCTAssertEqual(clipboard.writes, [])
+        XCTAssertEqual(feedback.toasts, [])
+        XCTAssertEqual(controller.phase, .idle)
+    }
+
+    // Sound 6 and 7
+    func testGrabPlaysTheChosenSoundAndNoTextStillPlaysBasso() async {
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.submarine)
+        await grab(threeLines)
+        await grab([])
+        XCTAssertEqual(feedback.sounds, [.copied(.submarine), .copied(.submarine), .notFound])
+        XCTAssertEqual(clipboard.writes.count, 1)
+        XCTAssertEqual(controller.settings.copiedSound, .submarine)
+    }
+
+    // Sound 8
+    func testSwitchOffSilencesEverythingAndKeepsTheChoice() async {
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.submarine)
+        controller.update(\.playSound, value: false)
+        await grab(threeLines)
+        await grab([])
+        controller.chooseCopiedSound(.hero)
+        controller.previewCopiedSound()
+        XCTAssertEqual(feedback.sounds, [.copied(.submarine)])
+        XCTAssertEqual(controller.settings.copiedSound, .submarine)
+        XCTAssertFalse(controller.copiedSoundControlsEnabled)
+        controller.update(\.playSound, value: true)
+        XCTAssertEqual(controller.settings.copiedSound, .submarine)
+    }
+
+    // Sound 9
+    func testCaptureSoundAndSwitchPersistAcrossRelaunch() {
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.ping)
+        let reopened = makeController()
+        XCTAssertTrue(reopened.settings.playSound)
+        XCTAssertEqual(reopened.settings.copiedSound, .ping)
+        XCTAssertTrue(reopened.copiedSoundControlsEnabled)
+        reopened.update(\.playSound, value: false)
+        let again = makeController()
+        XCTAssertEqual(again.settings.copiedSound, .ping)
+        XCTAssertFalse(again.copiedSoundControlsEnabled)
+    }
+
+    // Sound 10
+    func testUnknownOrMissingSoundFallsBackToGlass() async {
+        XCTAssertEqual(TextGrabCaptureSound(storedValue: nil), .glass)
+        XCTAssertEqual(TextGrabCaptureSound(storedValue: ""), .glass)
+        XCTAssertEqual(TextGrabCaptureSound(storedValue: "Nope.aiff"), .glass)
+        XCTAssertEqual(TextGrabCaptureSound(storedValue: "Submarine"), .submarine)
+        defaults.set("Nope.aiff", forKey: TextGrabSettings.Key.copiedSound)
+        defaults.set(true, forKey: TextGrabSettings.Key.playSound)
+        controller = makeController()
+        XCTAssertEqual(controller.settings.copiedSound, .glass)
+        await grab(threeLines)
+        XCTAssertEqual(feedback.sounds, [.copied(.glass)])
+    }
+
+    // Sound 6, 7 and 10 at the speaker: the real feedback plays by name through an injected player.
+    func testFeedbackPlaysTheNamedSoundThroughTheInjectedPlayer() {
+        let player = TextGrabSoundPlayerFake()
+        let real = TextGrabFeedback(player: player)
+        real.play(.copied(.submarine))
+        real.play(.notFound)
+        real.play(.copied(.glass))
+        XCTAssertEqual(player.played, ["Submarine", "Basso", "Glass"])
+    }
+
+    // Sound 13
+    func testCaptureSoundWritesOnlyTheAppSettings() {
+        controller.update(\.playSound, value: true)
+        controller.chooseCopiedSound(.tink)
+        controller.previewCopiedSound()
+        XCTAssertNil(UserDefaults.standard.object(forKey: TextGrabSettings.Key.copiedSound))
+        let written = defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix("textGrab.") }
+        XCTAssertEqual(Set(written), [TextGrabSettings.Key.keepLineBreaks, TextGrabSettings.Key.playSound,
+                                      TextGrabSettings.Key.language, TextGrabSettings.Key.showPreview,
+                                      TextGrabSettings.Key.copiedSound])
+        XCTAssertEqual(clipboard.writes, [])
     }
 
     // 19
@@ -523,7 +668,7 @@ final class TextGrabTests: XCTestCase {
     }
 
     func testDefaultsArePersistedOnlyInTheGivenStore() {
-        XCTAssertEqual(controller.settings, TextGrabSettings(keepLineBreaks: true, playSound: false, language: .automatic, showPreview: true))
+        XCTAssertEqual(controller.settings, TextGrabSettings(keepLineBreaks: true, playSound: false, language: .automatic, showPreview: true, copiedSound: .glass))
         controller.update(\.playSound, value: true)
         controller.update(\.keepLineBreaks, value: false)
         let restored = makeController()
@@ -629,6 +774,12 @@ final class TextGrabTestBox<Value> {
     func play(_ sound: TextGrabSound) { sounds.append(sound) }
 }
 
+/// Records sound names instead of playing them, so no test makes a sound.
+@MainActor final class TextGrabSoundPlayerFake: TextGrabSoundPlaying {
+    private(set) var played: [String] = []
+    func play(named name: String) { played.append(name) }
+}
+
 // MARK: - Test images and renders (test target only; the app never writes images)
 
 enum TextGrabTestImage {
@@ -672,9 +823,9 @@ enum TextGrabTestImage {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(scheme == .dark ? Color.black.opacity(0.15) : Color.white.opacity(0.3))
         }
-        .frame(width: 720, height: 1000)
+        .frame(width: 720, height: 1100)
         .background(scheme == .dark ? Color(white: 0.12) : Color(white: 0.97))
-        try render(content, scheme: scheme, size: CGSize(width: 720, height: 1000), to: url)
+        try render(content, scheme: scheme, size: CGSize(width: 720, height: 1100), to: url)
     }
 
     static func renderToast(_ content: TextGrabToastContent, scheme: ColorScheme, to url: URL) throws {
