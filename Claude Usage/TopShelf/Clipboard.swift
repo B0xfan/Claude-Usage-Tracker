@@ -32,7 +32,14 @@ final class ClipboardHistory {
                                             "de.petermaurer.TransientPasteboardType", "com.typeit4me.clipping", "Pasteboard generator type"]
 
     private(set) var clips: [Clip] = []
-    var query = ""
+    var query = "" { didSet { selectedID = nil } }
+    /// The clip the arrow keys are on; kept by id so pinning or a new copy does not move the ring to another clip.
+    var selectedID: Clip.ID?
+    /// Its place in `visible`; the first tile when nothing is picked.
+    var selected: Int {
+        get { visible.firstIndex { $0.id == selectedID } ?? 0 }
+        set { selectedID = visible.indices.contains(newValue) ? visible[newValue].id : nil }
+    }
     private let dir: URL?
     private var lastChange = NSPasteboard.general.changeCount
     private var timer: Timer?
@@ -140,6 +147,19 @@ final class ClipboardHistory {
         return hits.filter(\.pinned) + hits.filter { !$0.pinned }
     }
 
+    /// The tile place after an arrow key in a grid `columns` wide, kept on a real tile.
+    static func moved(_ i: Int, _ key: KeyEquivalent, count: Int, columns: Int) -> Int {
+        guard count > 0 else { return 0 }
+        let step = switch key {
+        case .leftArrow: -1
+        case .rightArrow: 1
+        case .upArrow: -columns
+        case .downArrow: columns
+        default: 0
+        }
+        return min(max(i + step, 0), count - 1)
+    }
+
     private func fingerprint(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined() }
 
     /// Finds the words in a copied picture on the Mac itself (Vision), so the picture can be searched.
@@ -160,7 +180,8 @@ final class ClipboardHistory {
 
 struct ClipboardPage: View {
     let model: ShelfModel   // the search field sits in the shelf's top row, right of the notch
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+    static let shelfColumns = 4
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: Self.shelfColumns)
 
     var body: some View {
         @Bindable var history = model.clipboard
@@ -169,21 +190,25 @@ struct ClipboardPage: View {
                 Text(history.query.isEmpty ? "Things you copy show up here." : "Nothing matches.")
                     .font(Look.small).foregroundStyle(Look.dim).frame(maxWidth: .infinity, minHeight: 96)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 8) {
-                        ForEach(history.visible) { tile($0) }
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 8) {
+                            ForEach(Array(history.visible.enumerated()), id: \.element.id) { i, c in tile(c, selected: i == history.selected) }
+                        }
+                    }
+                    .scrollIndicators(.never)
+                    .onChange(of: history.selected) { _, i in
+                        if history.visible.indices.contains(i) { proxy.scrollTo(history.visible[i].id) }
                     }
                 }
-                .scrollIndicators(.never)
             }
         }
     }
 
-    private func tile(_ c: ClipboardHistory.Clip) -> some View {
+    private func tile(_ c: ClipboardHistory.Clip, selected: Bool) -> some View {
         let history = model.clipboard
         return Button {
-            history.copy(c)
-            model.close()
+            model.use(c, paste: !NSEvent.modifierFlags.contains(.option))   // ⌥-click only copies
         } label: {
             ZStack(alignment: .bottomTrailing) {
                 Group {
@@ -201,13 +226,14 @@ struct ClipboardPage: View {
             }
             .background(Look.cardGradient)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(c.pinned ? Look.orange : .clear, lineWidth: 1.5))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? Look.blue : c.pinned ? Look.orange : .clear, lineWidth: 1.5))
             .contentShape(RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .contextMenu { Button(c.pinned ? "Unpin" : "Pin") { history.togglePin(c) } }
-        .help("Click to copy")
+        .help("Click to paste, ⌥-click to copy")
         .accessibilityLabel((c.pinned ? "Pinned: " : "") + (c.text.isEmpty ? "Picture" : c.text))
-        .accessibilityHint("Copies it back to the clipboard")
+        .accessibilityHint("Pastes it into the app you were in")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

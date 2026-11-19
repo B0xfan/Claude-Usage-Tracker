@@ -79,7 +79,13 @@ final class ShelfModel {
         files = FilesTray(store: dir?.appendingPathComponent("files.json"))
         clipboard = ClipboardHistory(dir: dir, live: live)
         agents = Agents(dir: dir, live: live)
-        if live { agents.onSound = { [weak self] s in self?.soundFile(s).map(AlertSounds.play) } }
+        if live {
+            agents.onSound = { [weak self] s in self?.soundFile(s).map(AlertSounds.play) }
+            // without the Accessibility permission the Mac shows its own "allow" box once and the clip stays a plain copy
+            pressPaste = {
+                if AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) { Self.postPasteKeys() }
+            }
+        }
         agents.onApproval = { [weak self] in
             // a request arrived: put it in front of John, on the page he is already looking at or by opening the shelf
             guard let self, self.openForApproval else { return }
@@ -96,10 +102,34 @@ final class ShelfModel {
 
     func open(_ p: Page, byHover: Bool = false) {
         page = p; openedByHover = byHover; isOpen = true
+        clipboard.selectedID = nil
         files.prune()   // expiry is checked whenever the shelf opens, so nothing old is ever shown
     }
     func close() { isOpen = false }
+
+    /// Presses ⌘V in the app John was in; nil in the self-test and pictures, so nothing is typed anywhere.
+    @ObservationIgnored var pressPaste: (() -> Void)?
+
+    /// Puts a clip on the clipboard, closes the shelf and, when `paste` is on, pastes it where John was typing.
+    /// Without the Accessibility permission the Mac drops the key press, so it stays a copy.
+    func use(_ c: ClipboardHistory.Clip, paste: Bool, to pb: NSPasteboard = .general) {
+        clipboard.copy(c, to: pb)
+        close()
+        guard paste, let press = pressPaste else { return }
+        // wait for the shelf to hand typing back to that app first
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: press)
+    }
     func toggle(_ p: Page) { if isOpen && page == p { close() } else { open(p) } }
+
+    /// shortcut: key 9 is V on US-style layouts; on Dvorak and similar it presses another key, read the layout if that matters.
+    static func postPasteKeys() {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        for down in [true, false] {
+            let e = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: down)
+            e?.flags = .maskCommand
+            e?.post(tap: .cghidEventTap)
+        }
+    }
 
     /// Something shows beside the closed notch: Claude Code activity or music.
     var showsMusic: Bool { music.isPlaying && music.hasTrack }

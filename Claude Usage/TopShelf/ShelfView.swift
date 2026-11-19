@@ -137,6 +137,24 @@ struct ShelfView: View {
             .background(Look.button, in: Capsule())
             .focused($searchFocused)
             .onAppear { searchFocused = !model.openedByHover }
+            // arrows pick a tile, Return pastes it (⌥Return copies), ⌘1 to ⌘9 paste that tile; left and right still edit the search words
+            .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+                if [.leftArrow, .rightArrow].contains(press.key) && !history.query.isEmpty { return .ignored }
+                history.selected = ClipboardHistory.moved(history.selected, press.key, count: history.visible.count,
+                                                          columns: ClipboardPage.shelfColumns)
+                return .handled
+            }
+            .onKeyPress(.return) { press in
+                guard history.visible.indices.contains(history.selected) else { return .ignored }
+                model.use(history.visible[history.selected], paste: !press.modifiers.contains(.option))
+                return .handled
+            }
+            .onKeyPress(characters: .decimalDigits) { press in
+                guard press.modifiers.subtracting([.capsLock, .numericPad]) == .command, let n = Int(press.characters), n > 0, history.visible.indices.contains(n - 1)
+                else { return .ignored }
+                model.use(history.visible[n - 1], paste: true)
+                return .handled
+            }
     }
 
     @ViewBuilder private var page: some View {

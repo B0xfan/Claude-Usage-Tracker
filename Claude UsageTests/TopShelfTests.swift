@@ -471,6 +471,36 @@ extension SelfTest {
         h.copy(hello, to: pb); h.poll(pb)
         check("clipboard: copying back puts it on the clipboard", pb.string(forType: .string) == "hello")
         check("clipboard: the history survives a restart", ClipboardHistory(dir: d, live: false).clips.count == h.clips.count)
+        // picking and pasting (phase 1): arrows move on the 4-wide grid and stay on a real tile
+        check("clipboard: right moves one tile", ClipboardHistory.moved(0, .rightArrow, count: 10, columns: 4) == 1)
+        check("clipboard: down moves one row", ClipboardHistory.moved(1, .downArrow, count: 10, columns: 4) == 5)
+        check("clipboard: down past the end stops on the last tile", ClipboardHistory.moved(8, .downArrow, count: 10, columns: 4) == 9)
+        check("clipboard: up and left stop at the first tile", ClipboardHistory.moved(2, .upArrow, count: 10, columns: 4) == 0
+              && ClipboardHistory.moved(0, .leftArrow, count: 10, columns: 4) == 0)
+        check("clipboard: no tiles means place 0", ClipboardHistory.moved(3, .downArrow, count: 0, columns: 4) == 0)
+        h.selected = 2; h.query = "x"
+        check("clipboard: new search words go back to the first tile", h.selected == 0)
+        h.query = ""
+        let m = ShelfModel()
+        var presses = 0
+        m.pressPaste = { presses += 1 }
+        m.open(.clipboard)
+        m.use(hello, paste: false, to: pb)
+        check("clipboard: copy only closes the shelf and copies", !m.isOpen && pb.string(forType: .string) == "hello")
+        wait(0.4) { presses > 0 }
+        check("clipboard: copy only never presses paste", presses == 0)
+        m.open(.clipboard)
+        m.use(hello, paste: true, to: pb)
+        check("clipboard: paste waits for the shelf to hand typing back", presses == 0)
+        wait(5) { presses > 0 }
+        check("clipboard: a click pastes once", presses == 1 && !m.isOpen)
+        h.selected = 1
+        let picked = h.visible[1].id
+        h.togglePin(h.visible[1])
+        check("clipboard: pinning keeps the ring on the same clip", h.visible[h.selected].id == picked)
+        h.togglePin(h.visible[h.selected])
+        check("clipboard: the quiet model never presses keys", ShelfModel().pressPaste == nil)
+
         let picture = h.clips.first { $0.kind == .image }!.imageFile!
         h.prune(now: Date().addingTimeInterval(7 * 86400 + 1))
         check("clipboard: after a week only pinned clips stay", h.clips.map(\.text) == ["hello"])
