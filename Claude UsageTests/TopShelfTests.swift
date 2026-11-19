@@ -535,7 +535,7 @@ extension SelfTest {
         check("library: a type shows only that type", ClipboardLibraryView.shown(list, .type(.links), "").map(\.text) == ["https://a.com"])
         check("library: search works inside a type", ClipboardLibraryView.shown(list, .type(.text), "old").map(\.text) == ["old words"])
         let noon = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
-        let dated = [0.0, 60, 86400, 3 * 86400].map { C(kind: .text, text: "t", key: "\($0)", last: noon.addingTimeInterval(-$0)) }
+        let dated = [0.0, 60, 86400, 259200].map { C(kind: .text, text: "t", key: "\($0)", last: noon.addingTimeInterval(-$0)) }
         check("library: clips are grouped Today, Yesterday, then a date",
               ClipboardLibraryView.days(dated, now: noon).map(\.clips.count) == [2, 1, 1]
               && ClipboardLibraryView.days(dated, now: noon).prefix(2).map(\.title) == ["Today", "Yesterday"])
