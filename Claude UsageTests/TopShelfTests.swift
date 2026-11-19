@@ -879,7 +879,7 @@ final class ClipboardLibraryPictureTests: XCTestCase {
             return true
         }
         let pb = NSPasteboard(name: NSPasteboard.Name(name)); defer { pb.releaseGlobally() }
-        pb.clearContents(); pb.writeObjects([wide]); m.clipboard.poll(pb)
+        pb.clearContents(); pb.writeObjects([wide]); m.clipboard.add(try XCTUnwrap(m.clipboard.read(pb)))  // read, not poll: a fresh pasteboard's change count can equal the general one's
         let samples: [(String, Double)] = [
             ("func greet(_ name: String) -> String {\n    return \"Hi \\(name)\"\n}", 86400 + 3600),
             ("Report.pdf", 86400 + 60),
@@ -903,7 +903,7 @@ final class ClipboardLibraryPictureTests: XCTestCase {
         m.clipboard.add(.init(kind: .files, text: "hosts", paths: ["/etc/hosts"], key: "hosts", last: Date().addingTimeInterval(-40)))
         m.clipboard.add(.init(kind: .files, text: shot.lastPathComponent, paths: [shot.path], key: "shot", last: Date().addingTimeInterval(-30)))
         XCTAssertEqual(m.clipboard.clips.count, 8)
-        XCTAssertNotNil(m.clipboard.image(m.clipboard.clips.first { $0.kind == .image }!))
+        XCTAssertNotNil(m.clipboard.image(try XCTUnwrap(m.clipboard.clips.first { $0.kind == .image })))
 
         let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
