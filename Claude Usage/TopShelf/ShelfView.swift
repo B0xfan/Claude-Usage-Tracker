@@ -144,7 +144,7 @@ struct ShelfView: View {
                                                           columns: ClipboardPage.shelfColumns)
                 return .handled
             }
-            .onKeyPress(.return) { press in
+            .onKeyPress(keys: [.return]) { press in
                 guard history.visible.indices.contains(history.selected) else { return .ignored }
                 model.use(history.visible[history.selected], paste: !press.modifiers.contains(.option))
                 return .handled
