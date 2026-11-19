@@ -47,10 +47,18 @@ struct TopShelfSettingsView: View {
                 Picker("Keep clipboard items for", selection: $model.keepClipsFor) {
                     Text("1 day").tag(86400.0); Text("1 week").tag(604800.0); Text("1 month").tag(2592000.0)
                 }
+                Picker(selection: $model.keepClipsMax) {
+                    Text("200").tag(200); Text("1,000").tag(1000); Text("5,000").tag(5000)
+                } label: {
+                    Text("Keep up to")
+                    Text("Pinned clips never count toward this.")
+                }
+                .pickerStyle(.segmented)
             }
             Section("Keyboard shortcuts") {
                 LabeledContent("Open the shelf") { keycap("⌥⌘T") }
                 LabeledContent("Open the clipboard") { keycap("⌥⌘V") }
+                LabeledContent("Open the clipboard library") { keycap("⌥⌘L") }
             }
         }
         .formStyle(.grouped)   // a grouped Form scrolls by itself when the window is shorter than its content

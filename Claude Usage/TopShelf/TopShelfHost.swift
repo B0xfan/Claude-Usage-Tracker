@@ -46,6 +46,7 @@ final class TopShelfHost {
             if let model { self?.statusItem?.isVisible = model.showMenuBarIcon }
         }
         model.openSettings = { [weak model] in if let model { SettingsWindow.show(model) } }
+        model.openLibrary = { [weak model] in if let model { ClipboardLibraryWindow.show(model) } }
     }
 
     /// Shared startup and Cleaning Mode restoration use the same shortcuts.
@@ -54,6 +55,7 @@ final class TopShelfHost {
         hotKeys = [
             HotKey(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.tray) },
             HotKey(keyCode: kVK_ANSI_V, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.clipboard) },
+            HotKey(keyCode: kVK_ANSI_L, modifiers: cmdKey | optionKey) { [weak model] in model?.openLibrary?() },
         ]
     }
 
@@ -64,6 +66,7 @@ final class TopShelfHost {
         let menu = NSMenu()
         menu.addItem(item("Open Top Shelf", "t", [.command, .option]) { [weak model] in model?.open(.tray) })
         menu.addItem(item("Open Clipboard", "v", [.command, .option]) { [weak model] in model?.open(.clipboard) })
+        menu.addItem(item("Open Clipboard Library", "l", [.command, .option]) { [weak model] in model?.openLibrary?() })
         menu.addItem(.separator())
         menu.addItem(item("Usage Shelf Settings…", "", []) { [weak model] in if let model { SettingsWindow.show(model) } })
         return menu
