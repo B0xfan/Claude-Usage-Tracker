@@ -523,6 +523,7 @@ extension SelfTest {
         check("library: a hex color is a Color", clip("#24a9ff").category == .colors && clip("rgb(10, 20, 30)").category == .colors)
         check("library: lines of code are Code", clip("func a() {\n  return 1\n}").category == .code)
         check("library: one line with a brace stays Text", clip("I said {hello}").category == .text)
+        check("library: a letter that says return stays Text", clip("Hi,\nI will return the form tomorrow.").category == .text)
         check("library: pictures and files keep their own type", clip("", .image).category == .pictures && clip("a.pdf", .files).category == .files)
         check("library: a 3-digit hex color gets a swatch", ClipboardLibraryView.color("#fff") != nil && ClipboardLibraryView.color("#12345") == nil)
 

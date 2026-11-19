@@ -6,6 +6,7 @@ struct TopShelfSettingsView: View {
     @Bindable var model: ShelfModel
     /// Set only in the Usage Shelf Settings window, where the shelf may be missing from the notch.
     var showShelf: (() -> Void)? = nil
+    @State private var shrinkTo: Int?
 
     var body: some View {
         Form {
@@ -47,13 +48,24 @@ struct TopShelfSettingsView: View {
                 Picker("Keep clipboard items for", selection: $model.keepClipsFor) {
                     Text("1 day").tag(86400.0); Text("1 week").tag(604800.0); Text("1 month").tag(2592000.0)
                 }
-                Picker(selection: $model.keepClipsMax) {
+                Picker(selection: Binding(get: { model.keepClipsMax }, set: { n in
+                    // a smaller size deletes clips for good, so ask first when it would
+                    if model.clipboard.clips.filter({ !$0.pinned }).count > n { shrinkTo = n } else { model.keepClipsMax = n }
+                })) {
                     Text("200").tag(200); Text("1,000").tag(1000); Text("5,000").tag(5000)
                 } label: {
                     Text("Keep up to")
                     Text("Pinned clips never count toward this.")
                 }
                 .pickerStyle(.segmented)
+                .confirmationDialog("Delete older clips?", isPresented: Binding(get: { shrinkTo != nil }, set: { if !$0 { shrinkTo = nil } })) {
+                    Button("Delete \(((model.clipboard.clips.filter { !$0.pinned }.count) - (shrinkTo ?? 0)).formatted()) clips", role: .destructive) {
+                        if let n = shrinkTo { model.keepClipsMax = n }
+                        shrinkTo = nil
+                    }
+                } message: {
+                    Text("Only the newest \((shrinkTo ?? 0).formatted()) are kept. Pinned clips stay. This can't be undone.")
+                }
             }
             Section("Keyboard shortcuts") {
                 LabeledContent("Open the shelf") { keycap("⌥⌘T") }

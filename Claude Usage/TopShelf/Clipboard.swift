@@ -30,11 +30,12 @@ final class ClipboardHistory {
             case .image: return .pictures
             case .files: return .files
             case .text, .rich:
-                let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                // the start is enough to tell, and keeps a 1 MB clip cheap to sort on every redraw
+                let t = String(text.prefix(2000)).trimmingCharacters(in: .whitespacesAndNewlines)
                 if t.range(of: #"^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|rgba?\([0-9., %]+\))$"#, options: .regularExpression) != nil { return .colors }
                 if !t.contains(where: \.isWhitespace), let u = URL(string: t), ["http", "https"].contains(u.scheme?.lowercased() ?? ""), u.host != nil { return .links }
-                // shortcut: a few telltale marks on a multi-line clip, not real language detection; enough to sort a history
-                if t.contains("\n"), ["{", "};", "=>", "func ", "def ", "import ", "</", "const ", "return "].contains(where: t.contains) { return .code }
+                // shortcut: two or more telltale marks on a multi-line clip, not real language detection; enough to sort a history
+                if t.contains("\n"), ["{", "};", "=>", "func ", "def ", "import ", "</", "const ", "return "].filter(t.contains).count >= 2 { return .code }
                 return .text
             }
         }
@@ -128,7 +129,8 @@ final class ClipboardHistory {
             unpinned += 1
             return unpinned <= maxClips && now.timeIntervalSince(c.last) <= keepFor
         }
-        for gone in clips where !keep.contains(gone) {
+        let kept = Set(keep.map(\.id))
+        for gone in clips where !kept.contains(gone.id) {
             if let f = gone.imageFile, let url = imageURL(f) { try? FileManager.default.removeItem(at: url) }
         }
         clips = keep
@@ -136,7 +138,7 @@ final class ClipboardHistory {
     }
 
     func togglePin(_ c: Clip) {
-        guard let i = clips.firstIndex(of: c) else { return }
+        guard let i = clips.firstIndex(where: { $0.id == c.id }) else { return }   // by id: the library holds older copies
         clips[i].pinned.toggle()
         savePrivately(clips, to: file)
     }
@@ -163,7 +165,15 @@ final class ClipboardHistory {
         if pb == .general { lastChange = pb.changeCount }
     }
 
-    func image(_ c: Clip) -> NSImage? { c.imageFile.flatMap(imageURL).flatMap { NSImage(contentsOf: $0) } }
+    /// Pictures read once; the shelf and library redraw on every key press.
+    private let images = NSCache<NSString, NSImage>()
+    func image(_ c: Clip) -> NSImage? {
+        guard let f = c.imageFile else { return nil }
+        if let hit = images.object(forKey: f as NSString) { return hit }
+        guard let url = imageURL(f), let img = NSImage(contentsOf: url) else { return nil }
+        images.setObject(img, forKey: f as NSString)
+        return img
+    }
 
     /// Pinned first, then newest; filtered by the search words.
     var visible: [Clip] {

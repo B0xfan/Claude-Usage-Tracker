@@ -40,7 +40,8 @@ struct ClipboardLibraryView: View {
         for c in clips {
             let title = calendar.isDate(c.last, inSameDayAs: now) ? "Today"
                 : calendar.isDate(c.last, inSameDayAs: calendar.date(byAdding: .day, value: -1, to: now) ?? now) ? "Yesterday"
-                : c.last.formatted(.dateTime.weekday(.wide).month(.wide).day())
+                : calendar.isDate(c.last, equalTo: now, toGranularity: .year) ? c.last.formatted(.dateTime.weekday(.wide).month(.wide).day())
+                : c.last.formatted(.dateTime.month(.wide).day().year())   // pinned clips can be older than a year
             if out.last?.title == title { out[out.count - 1].clips.append(c) } else { out.append(Day(title: title, clips: [c])) }
         }
         return out
@@ -293,8 +294,14 @@ enum ClipboardLibraryWindow {
     /// The app John was typing in when the library opened; pasting goes back there.
     private static var previousApp: NSRunningApplication?
 
+    private static var watcher: NSObjectProtocol?
+
     static func show(_ model: ShelfModel) {
         if let front = NSWorkspace.shared.frontmostApplication, front != .current { previousApp = front }
+        // keep following the last other app John used, so a window left open pastes where he was just typing
+        watcher = watcher ?? NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { n in
+            if let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication, app != .current { previousApp = app }
+        }
         if window == nil {
             let host = NSHostingController(rootView: ClipboardLibraryView(model: model, paste: { [weak model] c in model.map { paste(c, model: $0) } }))
             host.sizingOptions = []
