@@ -175,6 +175,19 @@ final class ClipboardHistory {
         return img
     }
 
+    /// What a clip looks like: the picture itself, or for copied files the first file
+    /// (a picture file shows as itself, any other file as its Finder icon). Nil when the file is gone.
+    func preview(_ c: Clip) -> NSImage? {
+        guard c.kind == .files else { return image(c) }
+        guard let path = c.paths?.first, FileManager.default.fileExists(atPath: path) else { return nil }
+        if let hit = images.object(forKey: path as NSString) { return hit }
+        // shortcut: files over 20 MB show their icon (reading them would stall the window); use QuickLook thumbnails if that matters
+        let small = ((try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int) ?? .max) < 20_000_000
+        let img = (small ? NSImage(contentsOfFile: path) : nil) ?? NSWorkspace.shared.icon(forFile: path)
+        images.setObject(img, forKey: path as NSString)
+        return img
+    }
+
     /// Pinned first, then newest; filtered by the search words.
     var visible: [Clip] {
         let hits = Self.matching(clips, query)
@@ -260,6 +273,8 @@ struct ClipboardPage: View {
                 Group {
                     if c.kind == .image, let img = history.image(c) {
                         Image(nsImage: img).resizable().aspectRatio(contentMode: .fill)
+                    } else if c.kind == .files, let img = history.preview(c) {
+                        Image(nsImage: img).resizable().aspectRatio(contentMode: .fit).padding(6)
                     } else {
                         Text(c.kind == .files ? "Files: " + c.text : c.text)
                             .font(Look.small).padding(8)

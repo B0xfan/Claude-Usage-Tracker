@@ -462,6 +462,11 @@ extension SelfTest {
         }
         copy { pb.writeObjects([img]) }
         check("clipboard: a picture is stored", h.clips[0].kind == .image && h.image(h.clips[0]) != nil)
+        let png = d.appendingPathComponent("shot.png")
+        try? NSBitmapImageRep(data: img.tiffRepresentation!)!.representation(using: .png, properties: [:])!.write(to: png)
+        copy { pb.writeObjects([png as NSURL]) }
+        check("clipboard: a copied picture file shows the picture", h.preview(h.clips[0]).map { $0.size.width == 5 * $0.size.height } == true)   // the 600 x 120 picture, not a square icon
+        check("clipboard: a copied file that is gone has no preview", h.preview(h.clips.first { $0.text == "Report.pdf" }!) == nil)
         wait(90) { h.clips.contains { $0.text.contains("4471") } }   // reading a picture can be slow the first time, with the whole suite running
         h.query = "invoice"
         check("clipboard: words inside a picture can be searched", h.visible.first?.kind == .image)
@@ -876,8 +881,18 @@ final class ClipboardLibraryPictureTests: XCTestCase {
             m.clipboard.add(.init(kind: t.hasSuffix(".pdf") ? .files : .text, text: t, paths: t.hasSuffix(".pdf") ? ["/tmp/" + t] : nil,
                                   key: t, last: Date().addingTimeInterval(-ago)))
         }
-        m.clipboard.togglePin(m.clipboard.clips.first { $0.text == "#24a9ff" }!)
-        XCTAssertEqual(m.clipboard.clips.count, 5)
+        // a copied picture file (shows the picture) and a copied plain file (shows its icon), newest, so the preview pane shows the picture (nothing pinned, pinned clips would come first)
+        let shot = FileManager.default.temporaryDirectory.appendingPathComponent("clop_2026-11-19_1061.png")
+        defer { try? FileManager.default.removeItem(at: shot) }
+        let drawn = NSImage(size: NSSize(width: 800, height: 500), flipped: false) { r in
+            NSColor(red: 0.14, green: 0.66, blue: 1, alpha: 1).setFill(); r.fill()
+            ("Screenshot" as NSString).draw(at: NSPoint(x: 40, y: 220), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 72), .foregroundColor: NSColor.white])
+            return true
+        }
+        try NSBitmapImageRep(data: XCTUnwrap(drawn.tiffRepresentation))!.representation(using: .png, properties: [:])!.write(to: shot)
+        m.clipboard.add(.init(kind: .files, text: "hosts", paths: ["/etc/hosts"], key: "hosts", last: Date().addingTimeInterval(-40)))
+        m.clipboard.add(.init(kind: .files, text: shot.lastPathComponent, paths: [shot.path], key: "shot", last: Date().addingTimeInterval(-30)))
+        XCTAssertEqual(m.clipboard.clips.count, 7)
 
         let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

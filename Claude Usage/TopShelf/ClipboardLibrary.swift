@@ -221,6 +221,15 @@ struct ClipboardLibraryView: View {
         if c.kind == .image, let img = model.clipboard.image(c) {
             Image(nsImage: img).resizable().aspectRatio(contentMode: big ? .fit : .fill)
                 .clipShape(RoundedRectangle(cornerRadius: 8)).padding(8)
+        } else if c.kind == .files, let img = model.clipboard.preview(c) {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: big ? nil : .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Text(c.text).font(.system(size: size - 1)).foregroundStyle(Look.dim)
+                    .lineLimit(big ? nil : 1).truncationMode(.middle)
+            }
+            .padding(8)
         } else if c.category == .colors {
             RoundedRectangle(cornerRadius: 8).fill(Self.color(c.text) ?? .gray)
                 .overlay(alignment: .bottomLeading) { Text(c.text).font(.system(size: size, weight: .semibold)).padding(8) }
@@ -257,7 +266,7 @@ struct ClipboardLibraryView: View {
                     info("Kind", c.category.rawValue)
                     info("Copied", Self.days([c]).first.map { $0.title + ", " + c.last.formatted(date: .omitted, time: .shortened) } ?? "")
                     info("Copied this many times", "\(c.count)")
-                    info("Size", c.kind == .image ? "Picture" : c.kind == .files ? "\(c.paths?.count ?? 0) files" : "\(c.text.count.formatted()) characters")
+                    info("Size", c.kind == .image ? "Picture" : c.kind == .files ? ((c.paths?.count ?? 0) == 1 ? "1 file" : "\(c.paths?.count ?? 0) files") : "\(c.text.count.formatted()) characters")
                 }
                 HStack(spacing: 8) {
                     Button("Paste") { paste(c) }
