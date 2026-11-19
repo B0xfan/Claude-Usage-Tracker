@@ -98,6 +98,11 @@ final class KeepAwakeShortcutTests: XCTestCase {
         XCTAssertEqual(manager.shortcuts[.keepAwake], old)
         XCTAssertEqual(resultWarning(.registrationFailed, combo: rejected), "This shortcut is already in use. Choose another one.")
         XCTAssertTrue(manager.perform(old))
+        // a shelf key another app already owns is refused too, and the shelf keeps its working key
+        let shelf = ShortcutAction.shelfLibrary.defaultCombo!
+        XCTAssertEqual(manager.setShortcut(shelf, for: .shelfLibrary), .success)
+        XCTAssertEqual(manager.setShortcut(rejected, for: .shelfLibrary), .registrationFailed)
+        XCTAssertEqual(manager.shortcuts[.shelfLibrary], shelf)
     }
 
     func testShortcutSymbolsAreSeparateAndLightPreviewIsActuallyLight() throws {

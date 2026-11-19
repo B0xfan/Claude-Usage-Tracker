@@ -304,7 +304,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
         let id = EventHotKeyID(signature: Self.hotKeySignature, id: nextHotKeyID)
         let (status, ref) = registrar(combo, action, id)
         guard status == noErr, let ref else {
-            if action == .keepAwake || action == .cleaningMode { shortcuts.removeValue(forKey: action) }
+            if ![.togglePopover, .refresh, .openSettings, .nextProfile].contains(action) { shortcuts.removeValue(forKey: action) }
             LoggingService.shared.log("ShortcutManager: Failed to register hotkey \(combo.displayString), status=\(status)")
             return
         }
