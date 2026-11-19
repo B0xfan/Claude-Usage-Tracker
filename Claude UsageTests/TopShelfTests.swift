@@ -879,7 +879,8 @@ final class ClipboardLibraryPictureTests: XCTestCase {
             return true
         }
         let pb = NSPasteboard(name: NSPasteboard.Name(name)); defer { pb.releaseGlobally() }
-        pb.clearContents(); pb.writeObjects([wide]); m.clipboard.add(try XCTUnwrap(m.clipboard.read(pb)))  // read, not poll: a fresh pasteboard's change count can equal the general one's
+        let widePNG = try XCTUnwrap(NSBitmapImageRep(data: XCTUnwrap(wide.tiffRepresentation))?.representation(using: .png, properties: [:]))
+        pb.clearContents(); pb.setData(widePNG, forType: .png); m.clipboard.add(try XCTUnwrap(m.clipboard.read(pb)))  // read, not poll: a fresh pasteboard's change count can equal the general one's
         let samples: [(String, Double)] = [
             ("func greet(_ name: String) -> String {\n    return \"Hi \\(name)\"\n}", 86400 + 3600),
             ("Report.pdf", 86400 + 60),
