@@ -41,6 +41,20 @@ enum ShortcutAction: String, CaseIterable {
     case nextProfile
     case keepAwake
     case cleaningMode
+    case shelfTray
+    case shelfClipboard
+    case shelfLibrary
+
+    /// The key a shortcut starts with before John sets or clears it (the shelf's long-standing keys).
+    var defaultCombo: KeyCombo? {
+        let mods: NSEvent.ModifierFlags = [.command, .option]
+        switch self {
+        case .shelfTray: return KeyCombo(keyCode: UInt16(kVK_ANSI_T), modifierFlags: mods)
+        case .shelfClipboard: return KeyCombo(keyCode: UInt16(kVK_ANSI_V), modifierFlags: mods)
+        case .shelfLibrary: return KeyCombo(keyCode: UInt16(kVK_ANSI_L), modifierFlags: mods)
+        default: return nil
+        }
+    }
 
     var displayName: String {
         switch self {
@@ -50,6 +64,9 @@ enum ShortcutAction: String, CaseIterable {
         case .nextProfile: return "Next profile"
         case .keepAwake: return "Keep awake"
         case .cleaningMode: return "Start Cleaning Mode"
+        case .shelfTray: return "Open the shelf"
+        case .shelfClipboard: return "Open the clipboard"
+        case .shelfLibrary: return "Open the clipboard library"
         }
     }
 }
@@ -201,6 +218,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
     var onNextProfile: (() -> Void)?
     var onToggleKeepAwake: (() -> Void)?
     var onStartCleaningMode: (() -> Void)?
+    var onShelf: ((ShortcutAction) -> Void)?
 
     private convenience init() {
         self.init(store: SharedDataStore.shared)
@@ -223,10 +241,6 @@ struct KeyCombo: Codable, Equatable, Hashable {
         if let combo {
             if let duplicate = shortcuts.first(where: { $0.key != action && $0.value == combo }) {
                 return .duplicate(duplicate.key.displayName)
-            }
-            if combo.carbonModifiers == cmdKey | optionKey,
-               combo.keyCode == kVK_ANSI_T || combo.keyCode == kVK_ANSI_V {
-                return .duplicate("Top Shelf")
             }
         }
         let previous = shortcuts[action]
@@ -315,6 +329,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
         case .nextProfile: onNextProfile?()
         case .keepAwake: onToggleKeepAwake?()
         case .cleaningMode: onStartCleaningMode?()
+        case .shelfTray, .shelfClipboard, .shelfLibrary: onShelf?(action)
         }
     }
 }

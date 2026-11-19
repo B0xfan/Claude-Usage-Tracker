@@ -246,7 +246,7 @@ struct ClipboardPage: View {
                 Spacer()
                 Button("Open library") { model.openLibrary?() }
                     .buttonStyle(.plain).font(Look.small).foregroundStyle(Look.blue)
-                    .help("The whole history in a big window (⌥⌘L)")
+                    .help("The whole history in a big window" + (ShortcutManager.shared.shortcuts[.shelfLibrary].map { " (\($0.displayString))" } ?? ""))
             }
         }
     }

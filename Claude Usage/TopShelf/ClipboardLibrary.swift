@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The clipboard library: the whole history in a big window, sorted by type in a sidebar, grouped by day,
-/// with a larger preview beside it (approved mockup, 2026-11-19). ⌥⌘V still opens the shelf's quick view.
+/// with a larger preview beside it (approved mockup, 2026-11-19). The clipboard shortcut still opens the shelf's quick view.
 struct ClipboardLibraryView: View {
     let model: ShelfModel
     /// Hands typing back to the app John was in, then pastes there (set by the window).
@@ -288,7 +288,7 @@ struct ClipboardLibraryView: View {
     }
 }
 
-/// One library window, opened from the menu bar (⌥⌘L) and the shelf's "Open library" button.
+/// One library window, opened from its shortcut, the menu bar and the shelf's "Open library" button.
 enum ClipboardLibraryWindow {
     private static var window: NSWindow?
     /// The app John was typing in when the library opened; pasting goes back there.

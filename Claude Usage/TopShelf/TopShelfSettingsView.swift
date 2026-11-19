@@ -7,6 +7,9 @@ struct TopShelfSettingsView: View {
     /// Set only in the Usage Shelf Settings window, where the shelf may be missing from the notch.
     var showShelf: (() -> Void)? = nil
     @State private var shrinkTo: Int?
+    @State private var combos: [ShortcutAction: KeyCombo?] = Dictionary(uniqueKeysWithValues:
+        [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary].map { ($0, ShortcutManager.shared.shortcuts[$0]) })
+    @State private var shortcutWarning: String?
 
     var body: some View {
         Form {
@@ -67,10 +70,15 @@ struct TopShelfSettingsView: View {
                     Text("Only the newest \((shrinkTo ?? 0).formatted()) are kept. Pinned clips stay. This can't be undone.")
                 }
             }
-            Section("Keyboard shortcuts") {
-                LabeledContent("Open the shelf") { keycap("⌥⌘T") }
-                LabeledContent("Open the clipboard") { keycap("⌥⌘V") }
-                LabeledContent("Open the clipboard library") { keycap("⌥⌘L") }
+            Section {
+                shortcut(.shelfTray)
+                shortcut(.shelfClipboard)
+                shortcut(.shelfLibrary)
+                if let shortcutWarning { Text(shortcutWarning).font(.caption).foregroundStyle(.orange) }
+            } header: {
+                Text("Keyboard shortcuts")
+            } footer: {
+                Text("Click a shortcut, then press the keys you want. Clear it to turn it off.").font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)   // a grouped Form scrolls by itself when the window is shorter than its content
@@ -90,10 +98,18 @@ struct TopShelfSettingsView: View {
         }
     }
 
-    private func keycap(_ keys: String) -> some View {
-        Text(keys).font(.system(size: 12, design: .monospaced))
-            .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.secondary.opacity(0.2), in: RoundedRectangle(cornerRadius: 5))
+    /// Same recorder and clash check as the tracker's own Shortcuts page.
+    private func shortcut(_ action: ShortcutAction) -> some View {
+        LabeledContent(action.displayName) {
+            ShortcutRecorderView(keyCombo: Binding(
+                get: { combos[action] ?? nil },
+                set: { newValue in
+                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
+                    shortcutWarning = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
+                    combos[action] = ShortcutManager.shared.shortcuts[action]
+                }
+            ))
+        }
     }
 }
 

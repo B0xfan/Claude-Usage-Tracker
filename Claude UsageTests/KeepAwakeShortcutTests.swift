@@ -80,9 +80,10 @@ final class KeepAwakeShortcutTests: XCTestCase {
         let result = manager.setShortcut(refresh, for: .keepAwake)
         XCTAssertEqual(result, .duplicate("Refresh usage"))
         XCTAssertEqual(manager.shortcuts[.keepAwake], old)
-        for (keyCode, name) in [(kVK_ANSI_T, "Top Shelf"), (kVK_ANSI_V, "Top Shelf")] {
-            let combo = KeyCombo(keyCode: UInt16(keyCode), modifierFlags: [.command, .option])
-            XCTAssertEqual(manager.setShortcut(combo, for: .keepAwake), .duplicate(name))
+        for action in [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary] {
+            let combo = action.defaultCombo!
+            XCTAssertEqual(manager.setShortcut(combo, for: action), .success)
+            XCTAssertEqual(manager.setShortcut(combo, for: .keepAwake), .duplicate(action.displayName))
             XCTAssertEqual(manager.shortcuts[.keepAwake], old)
         }
         XCTAssertTrue(manager.perform(old))
