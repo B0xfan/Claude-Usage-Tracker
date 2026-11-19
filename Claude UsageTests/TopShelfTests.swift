@@ -869,7 +869,17 @@ final class ClipboardLibraryPictureTests: XCTestCase {
             TopShelfDefaults.store.removePersistentDomain(forName: name)
             TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
         }
-        let m = ShelfModel()
+        let pics = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        defer { try? FileManager.default.removeItem(at: pics) }
+        let m = ShelfModel(folder: pics)
+        // a wide copied picture, to show it stays inside its tile
+        let wide = NSImage(size: NSSize(width: 1600, height: 500), flipped: false) { r in
+            NSColor.systemPink.setFill(); r.fill()
+            ("A wide picture" as NSString).draw(at: NSPoint(x: 60, y: 200), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 90), .foregroundColor: NSColor.white])
+            return true
+        }
+        let pb = NSPasteboard(name: NSPasteboard.Name(name)); defer { pb.releaseGlobally() }
+        pb.clearContents(); pb.writeObjects([wide]); m.clipboard.poll(pb)
         let samples: [(String, Double)] = [
             ("func greet(_ name: String) -> String {\n    return \"Hi \\(name)\"\n}", 86400 + 3600),
             ("Report.pdf", 86400 + 60),
@@ -892,7 +902,8 @@ final class ClipboardLibraryPictureTests: XCTestCase {
         try NSBitmapImageRep(data: XCTUnwrap(drawn.tiffRepresentation))!.representation(using: .png, properties: [:])!.write(to: shot)
         m.clipboard.add(.init(kind: .files, text: "hosts", paths: ["/etc/hosts"], key: "hosts", last: Date().addingTimeInterval(-40)))
         m.clipboard.add(.init(kind: .files, text: shot.lastPathComponent, paths: [shot.path], key: "shot", last: Date().addingTimeInterval(-30)))
-        XCTAssertEqual(m.clipboard.clips.count, 7)
+        XCTAssertEqual(m.clipboard.clips.count, 8)
+        XCTAssertNotNil(m.clipboard.image(m.clipboard.clips.first { $0.kind == .image }!))
 
         let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

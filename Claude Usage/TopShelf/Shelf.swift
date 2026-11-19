@@ -75,11 +75,11 @@ final class ShelfModel {
     let agents: Agents
 
     /// `live` starts the system services; the self-test and pictures use a quiet model.
-    init(live: Bool = false) {
+    init(live: Bool = false, folder: URL? = nil) {
         music = NowPlaying(resources: live ? Bundle.main.resourceURL : nil)
         calendar = CalendarService(live: live)
         weather = WeatherService(live: live)
-        let dir = live ? supportFolder() : nil
+        let dir = live ? supportFolder() : folder   // pictures tests pass a throwaway folder so copied pictures can be stored
         files = FilesTray(store: dir?.appendingPathComponent("files.json"))
         clipboard = ClipboardHistory(dir: dir, live: live)
         agents = Agents(dir: dir, live: live)

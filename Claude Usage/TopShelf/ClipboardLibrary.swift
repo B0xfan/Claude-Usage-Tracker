@@ -219,8 +219,14 @@ struct ClipboardLibraryView: View {
     @ViewBuilder private func content(_ c: ClipboardHistory.Clip, big: Bool = false) -> some View {
         let size: CGFloat = big ? 13 : 12
         if c.kind == .image, let img = model.clipboard.image(c) {
-            Image(nsImage: img).resizable().aspectRatio(contentMode: big ? .fit : .fill)
-                .clipShape(RoundedRectangle(cornerRadius: 8)).padding(8)
+            if big {
+                Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 8)).padding(8)
+            } else {
+                // the tile's own size, filled by the picture and cut to it, so a wide picture never spills onto the next tile
+                Color.clear.overlay { Image(nsImage: img).resizable().aspectRatio(contentMode: .fill) }
+                    .clipShape(RoundedRectangle(cornerRadius: 8)).padding(8)
+            }
         } else if c.kind == .files, let img = model.clipboard.preview(c) {
             VStack(alignment: .leading, spacing: 6) {
                 Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
