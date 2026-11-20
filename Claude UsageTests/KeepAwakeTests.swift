@@ -274,7 +274,7 @@ final class KeepAwakeTests: XCTestCase {
         let renderer = MenuBarIconRenderer()
         let rings = renderer.createCombinedRingsIcon(
             sessionPercentage: 25, weekPercentage: 50,
-            sessionLevel: .safe, weekLevel: .safe, isDarkMode: true
+            sessionLevel: .critical, weekLevel: .critical, isDarkMode: true   // red rings: safe rings share the on-mark's green
         )
         let accessory = controller.menuBarAccessoryImage(isDarkMode: true)
         let combined = renderer.appendingKeepAwakeAccessory(accessory, to: rings)
@@ -282,14 +282,14 @@ final class KeepAwakeTests: XCTestCase {
         XCTAssertEqual(combined.size.height, max(rings.size.height, accessory.size.height), accuracy: 0.01)
 
         let bitmap = try XCTUnwrap(NSBitmapImageRep(data: combined.tiffRepresentation ?? Data()))
-        let orange = KeepAwakeMarkColor.green.nsColor.usingColorSpace(.sRGB)!   // on = green
+        let green = KeepAwakeMarkColor.green.nsColor.usingColorSpace(.sRGB)!   // on = green
         var markPixels: [Int] = []
         for x in 0..<bitmap.pixelsWide {
             for y in 0..<bitmap.pixelsHigh {
                 guard let pixel = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB), pixel.alphaComponent > 0.8 else { continue }
-                let close = abs(pixel.redComponent - orange.redComponent) < 0.08
-                    && abs(pixel.greenComponent - orange.greenComponent) < 0.08
-                    && abs(pixel.blueComponent - orange.blueComponent) < 0.08
+                let close = abs(pixel.redComponent - green.redComponent) < 0.08
+                    && abs(pixel.greenComponent - green.greenComponent) < 0.08
+                    && abs(pixel.blueComponent - green.blueComponent) < 0.08
                 if close { markPixels.append(x) }
             }
         }
