@@ -15,7 +15,7 @@ struct KeepAwakePopoverSection: View {
                     if controller.isActive {
                         Text(controller.isPaused ? "Paused while locked" : controller.popupTime(at: controller.currentTimeForDisplay))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(nsColor: controller.settings.markColor.nsColor))
+                            .foregroundColor(Color(nsColor: controller.markColor.nsColor))
                     }
                 }
                 Spacer()
@@ -111,7 +111,7 @@ struct KeepAwakeSettingsView: View {
                 SettingsSectionCard(title: "Options", subtitle: "How keep-awake behaves day to day") {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
                         SettingToggle(title: "Start when Usage Shelf launches", description: "Uses your last chosen duration", isOn: binding(\.startOnLaunch))
-                        SettingToggle(title: "Show time left beside the menu bar icon", description: "Example: orange mark + 1:42 next to your rings", isOn: binding(\.showTime))
+                        SettingToggle(title: "Show time left beside the menu bar icon", description: "Example: green mark + 1:42 next to your rings", isOn: binding(\.showTime))
                         SettingToggle(title: "Allow the display to sleep", description: "Screen can go dark; the Mac itself stays awake", isOn: binding(\.allowDisplaySleep))
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(alignment: .top, spacing: 6) {
@@ -125,19 +125,6 @@ struct KeepAwakeSettingsView: View {
                             if !controller.pointerPermissionGranted {
                                 Button("Open Accessibility Settings", action: controller.openAccessibilitySettings)
                                     .buttonStyle(.plain).font(.system(size: 11)).foregroundColor(.accentColor)
-                            }
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Active mark color").font(DesignTokens.Typography.body)
-                            Text("Color of the small keep-awake mark while it is on").font(DesignTokens.Typography.caption).foregroundColor(.secondary)
-                            HStack(spacing: 8) {
-                                ForEach(KeepAwakeMarkColor.allCases) { color in
-                                    Button { controller.update(\.markColor, value: color) } label: {
-                                        Circle().fill(Color(nsColor: color.nsColor)).frame(width: 18, height: 18)
-                                            .overlay(Circle().stroke(Color.primary, lineWidth: controller.settings.markColor == color ? 2 : 0).padding(-3))
-                                    }
-                                    .buttonStyle(.plain).accessibilityLabel(color.rawValue.capitalized)
-                                }
                             }
                         }
                         VStack(alignment: .leading, spacing: 6) {

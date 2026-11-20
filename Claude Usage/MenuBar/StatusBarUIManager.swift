@@ -69,11 +69,11 @@ final class StatusBarUIManager {
     private var keepAwakeController: KeepAwakeController?
     private var menuBarIsDark = false
     private var keepAwakeImage: NSImage? {
-        guard keepAwakeController?.isActive == true else { return nil }
-        return keepAwakeController?.menuBarAccessoryImage(isDarkMode: menuBarIsDark)
+        keepAwakeController?.menuBarAccessoryImage(isDarkMode: menuBarIsDark)   // shown on and off: green on, orange off
     }
     private func keepAwakeToolTip() -> String? {
-        guard let controller = keepAwakeController, controller.isActive else { return nil }
+        guard let controller = keepAwakeController else { return nil }
+        guard controller.isActive else { return "Keep awake is off" }
         return controller.isPaused ? "Keep awake paused while locked" : "Keep awake: \(controller.popupTime(at: Date().timeIntervalSinceReferenceDate))"
     }
     private func updateKeepAwakeAppearance(for button: NSStatusBarButton, isDark: Bool) {
