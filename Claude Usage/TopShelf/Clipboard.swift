@@ -272,7 +272,8 @@ struct ClipboardPage: View {
             ZStack(alignment: .bottomTrailing) {
                 Group {
                     if c.kind == .image, let img = history.image(c) {
-                        Image(nsImage: img).resizable().aspectRatio(contentMode: .fill)
+                        // the tile's own size, filled by the picture and cut to it, so a wide picture never spills onto the next tile
+                        Color.clear.overlay { Image(nsImage: img).resizable().aspectRatio(contentMode: .fill) }
                     } else if c.kind == .files, let img = history.preview(c) {
                         Image(nsImage: img).resizable().aspectRatio(contentMode: .fit).padding(6)
                     } else {
