@@ -177,7 +177,7 @@ final class Screenshots {
         let name = nameOn
         for file in fresh where Self.isNew(file, words: words) {
             let url = watchFolder.appendingPathComponent(file)
-            Task.detached(priority: .utility) { () async -> Void in
+            Task<Void, Never>.detached(priority: .utility) {
                 guard await Self.waitUntilSaved(url) else { return }
                 _ = try? await Self.process(url, shrink: level, title: name ? { await ScreenshotNamer.title($0, app: app) } : nil)
             }
@@ -237,7 +237,7 @@ final class Screenshots {
         let fm = FileManager.default
         let names = (try? fm.contentsOfDirectory(atPath: watchFolder.path)) ?? []
         let shots = names.filter { Self.isNew($0, words: words) || (Self.isPicture($0) && Self.isNamed($0)) }
-        guard !shots.isEmpty, moveFolder.standardizedFileURL != watchFolder.standardizedFileURL, (try? fm.createDirectory(at: moveFolder, withIntermediateDirectories: true)) != nil else { return 0 }
+        guard !shots.isEmpty, moveFolder.resolvingSymlinksInPath() != watchFolder.resolvingSymlinksInPath(), (try? fm.createDirectory(at: moveFolder, withIntermediateDirectories: true)) != nil else { return 0 }
         return shots.filter { (try? fm.moveItem(at: watchFolder.appendingPathComponent($0), to: Self.unique(moveFolder, $0))) != nil }.count
     }
 }
