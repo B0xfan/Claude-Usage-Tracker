@@ -51,7 +51,7 @@ final class TopShelfHost {
         model.menuBarIconChanged = { [weak self, weak model] in
             if let model { self?.statusItem?.isVisible = model.showMenuBarIcon }
         }
-        model.openSettings = { [weak model] in if let model { SettingsWindow.show(model) } }
+        model.openSettings = { [weak model] in model?.close(); NotificationCenter.default.post(name: .showShelfSettings, object: nil) }
         model.openLibrary = { [weak model] in if let model { ClipboardLibraryWindow.show(model) } }
     }
 
@@ -64,7 +64,7 @@ final class TopShelfHost {
         menu.add(MenuAction(title: "Open Clipboard", key: "") { [weak model] in model?.open(.clipboard) }, .shelfClipboard)
         menu.add(MenuAction(title: "Open Clipboard Library", key: "") { [weak model] in model?.openLibrary?() }, .shelfLibrary)
         menu.addItem(.separator())
-        menu.addItem(MenuAction(title: "Usage Shelf Settings…", key: "") { [weak model] in if let model { SettingsWindow.show(model) } })
+        menu.addItem(MenuAction(title: "Usage Shelf Settings…", key: "") { [weak model] in model?.openSettings?() })
         return menu
     }
 }

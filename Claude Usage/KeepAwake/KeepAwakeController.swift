@@ -32,15 +32,13 @@ enum KeepAwakeDuration: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum KeepAwakeMarkColor: String, CaseIterable, Codable, Identifiable {
-    case orange, green, teal, blue
-    var id: String { rawValue }
+/// The keep-awake mark is green while on and orange while off (John 2026-11-20).
+enum KeepAwakeMarkColor: String, CaseIterable {
+    case orange, green
     var nsColor: NSColor {
         switch self {
         case .orange: NSColor(srgbRed: 1, green: 0x9f / 255, blue: 0x0a / 255, alpha: 1)
         case .green: NSColor(srgbRed: 0x30 / 255, green: 0xd1 / 255, blue: 0x58 / 255, alpha: 1)
-        case .teal: NSColor(srgbRed: 0x64 / 255, green: 0xd2 / 255, blue: 1, alpha: 1)
-        case .blue: NSColor(srgbRed: 0x0a / 255, green: 0x84 / 255, blue: 1, alpha: 1)
         }
     }
 }
@@ -61,7 +59,6 @@ struct KeepAwakeSettings: Equatable {
     var showTime = true
     var allowDisplaySleep = true
     var pointerMovement = false
-    var markColor = KeepAwakeMarkColor.orange
     var batteryCutoff = false
     var batteryLevel = 10
     var displayTrigger = false
@@ -75,7 +72,6 @@ struct KeepAwakeSettings: Equatable {
         result.showTime = defaults.object(forKey: "keepAwake.showTime") as? Bool ?? true
         result.allowDisplaySleep = defaults.object(forKey: "keepAwake.allowDisplaySleep") as? Bool ?? true
         result.pointerMovement = defaults.bool(forKey: "keepAwake.pointerMovement")
-        result.markColor = KeepAwakeMarkColor(rawValue: defaults.string(forKey: "keepAwake.markColor") ?? "") ?? .orange
         result.batteryCutoff = defaults.bool(forKey: "keepAwake.batteryCutoff")
         result.batteryLevel = defaults.object(forKey: "keepAwake.batteryLevel") as? Int ?? 10
         result.displayTrigger = defaults.bool(forKey: "keepAwake.displayTrigger")
@@ -343,7 +339,6 @@ final class KeepAwakeController: ObservableObject {
         case \KeepAwakeSettings.showTime: save("showTime", value as! Bool)
         case \KeepAwakeSettings.allowDisplaySleep: save("allowDisplaySleep", value as! Bool)
         case \KeepAwakeSettings.pointerMovement: save("pointerMovement", value as! Bool)
-        case \KeepAwakeSettings.markColor: save("markColor", (value as! KeepAwakeMarkColor).rawValue)
         case \KeepAwakeSettings.batteryCutoff: save("batteryCutoff", value as! Bool)
         case \KeepAwakeSettings.batteryLevel: save("batteryLevel", value as! Int)
         case \KeepAwakeSettings.displayTrigger: save("displayTrigger", value as! Bool)
@@ -416,9 +411,11 @@ final class KeepAwakeController: ObservableObject {
 
     func contextMenuTitles(isOn: Bool) -> [String] { ["Keep awake", "Refresh", "Settings", "Quit"] }
 
+    var markColor: KeepAwakeMarkColor { isActive ? .green : .orange }
+
     func menuBarAccessoryImage(isDarkMode: Bool) -> NSImage {
         let showTime = settings.showTime
-        let text = isPaused ? "Paused" : (showTime ? menuBarTime(at: currentTime) : "")
+        let text = !isActive ? "" : isPaused ? "Paused" : (showTime ? menuBarTime(at: currentTime) : "")
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
             .foregroundColor: isDarkMode ? NSColor.white : NSColor.black
@@ -426,7 +423,7 @@ final class KeepAwakeController: ObservableObject {
         let textSize = (text as NSString).size(withAttributes: attributes)
         let size = NSSize(width: 18 + (!text.isEmpty ? textSize.width + 3 : 0), height: 18)
         return NSImage(size: size, flipped: false) { rect in
-            let color = self.settings.markColor.nsColor
+            let color = self.markColor.nsColor
             color.setFill()
             NSBezierPath(ovalIn: NSRect(x: 4, y: 5, width: 8, height: 8)).fill()
             color.withAlphaComponent(0.25).setStroke()

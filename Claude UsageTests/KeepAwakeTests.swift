@@ -218,12 +218,10 @@ final class KeepAwakeTests: XCTestCase {
         controller.update(\.startOnLaunch, value: true)
         controller.update(\.batteryCutoff, value: true)
         controller.update(\.batteryLevel, value: 25)
-        controller.update(\.markColor, value: .teal)
         let restored = KeepAwakeSettings.load(from: UserDefaults(suiteName: suite)!)
         XCTAssertTrue(restored.startOnLaunch)
         XCTAssertTrue(restored.batteryCutoff)
         XCTAssertEqual(restored.batteryLevel, 25)
-        XCTAssertEqual(restored.markColor, .teal)
         XCTAssertNil(UserDefaults.standard.object(forKey: "keepAwake.batteryLevel"))
     }
 
@@ -251,14 +249,13 @@ final class KeepAwakeTests: XCTestCase {
         XCTAssertEqual(titles, ["Keep awake", "Refresh", "Settings", "Quit"])
     }
 
-    func testActiveMarkUsesChosenColorWithoutChangingUsageRings() {
-        let orange = KeepAwakeMarkColor.orange.nsColor.usingColorSpace(.sRGB)!
-        XCTAssertEqual(orange.redComponent, 1, accuracy: 0.01)
-        XCTAssertEqual(orange.greenComponent, 0x9f / 255.0, accuracy: 0.01)
-        XCTAssertEqual(orange.blueComponent, 0x0a / 255.0, accuracy: 0.01)
-        XCTAssertEqual(KeepAwakeMarkColor.allCases.map(\.rawValue), ["orange", "green", "teal", "blue"])
-        let image = controller.menuBarAccessoryImage(isDarkMode: true)
-        XCTAssertGreaterThan(image.size.width, 0)
+    func testMarkIsGreenWhenOnAndOrangeWhenOff() {
+        XCTAssertEqual(controller.markColor, .orange)
+        XCTAssertEqual(controller.menuBarAccessoryImage(isDarkMode: true).size.width, 18, "off: the mark only, no time")
+        controller.start(duration: .untilOff, now: 0)
+        XCTAssertEqual(controller.markColor, .green)
+        controller.stop()
+        XCTAssertEqual(controller.markColor, .orange)
     }
 
     func testMenuBarCompositionLeavesIconUnchangedWhenKeepAwakeIsOff() {
@@ -285,7 +282,7 @@ final class KeepAwakeTests: XCTestCase {
         XCTAssertEqual(combined.size.height, max(rings.size.height, accessory.size.height), accuracy: 0.01)
 
         let bitmap = try XCTUnwrap(NSBitmapImageRep(data: combined.tiffRepresentation ?? Data()))
-        let orange = KeepAwakeMarkColor.orange.nsColor.usingColorSpace(.sRGB)!
+        let orange = KeepAwakeMarkColor.green.nsColor.usingColorSpace(.sRGB)!   // on = green
         var markPixels: [Int] = []
         for x in 0..<bitmap.pixelsWide {
             for y in 0..<bitmap.pixelsHigh {
