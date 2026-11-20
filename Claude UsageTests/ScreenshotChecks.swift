@@ -65,7 +65,8 @@ enum ScreenshotChecks {
         XCTAssertTrue(CGImageDestinationFinalize(p3Dest))
         let p3Small = try XCTUnwrap(PNGShrinker.shrink(p3PNG as Data, .balanced))
         let p3Back = try XCTUnwrap(CGImageSourceCreateImageAtIndex(XCTUnwrap(CGImageSourceCreateWithData(p3Small as CFData, nil)), 0, nil))
-        XCTAssertEqual(p3Back.colorSpace?.copyICCData() as Data?, p3.copyICCData() as Data?, "same colour profile")
+        let back = try XCTUnwrap(p3Back.colorSpace)   // a palette picture: the profile sits on its base colour space
+        XCTAssertEqual((back.baseColorSpace ?? back).copyICCData() as Data?, p3.copyICCData() as Data?, "same colour profile")
 
         // Which files count.
         let words = ["Screenshot", "clop", "cleanyard"]

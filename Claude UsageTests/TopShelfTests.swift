@@ -302,7 +302,7 @@ extension SelfTest {
         let ideal = NSHostingView(rootView: TopShelfSettingsView(model: m).fixedSize(horizontal: false, vertical: true)).fittingSize.height
         check("settings window: on a short screen it fits inside the visible area (content \(Int(ideal)) pt tall, window \(Int(w.frame.height)) pt)",
               ideal > short.height && short.contains(w.frame) && w.frame.height <= short.height)
-        let tall = NSRect(x: 0, y: 0, width: 1728, height: 1400)
+        let tall = NSRect(x: 0, y: 0, width: 1728, height: 2400)   // taller than all of Settings, Screenshots section included
         SettingsWindow.fit(w, model: m, visible: tall)
         check("settings window: on a tall screen it is just as tall as its content", abs(w.contentLayoutRect.height - ideal) < 2 && tall.contains(w.frame))
         SettingsWindow.fit(w, model: m, visible: short)
