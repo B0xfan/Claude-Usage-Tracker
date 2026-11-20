@@ -177,11 +177,14 @@ final class Screenshots {
         let name = nameOn
         for file in fresh where Self.isNew(file, words: words) {
             let url = watchFolder.appendingPathComponent(file)
-            Task<Void, Never>.detached(priority: .utility) {
-                guard await Self.waitUntilSaved(url) else { return }
-                _ = try? await Self.process(url, shrink: level, title: name ? { await ScreenshotNamer.title($0, app: app) } : nil)
-            }
+            Task.detached(priority: .utility) { await Self.handle(url, shrink: level, name: name, app: app) }
         }
+    }
+
+    nonisolated static func handle(_ url: URL, shrink: ShrinkLevel?, name: Bool, app: String?) async {
+        guard await waitUntilSaved(url) else { return }
+        let namer: ((CGImage) async -> String?)? = name ? { cg in await ScreenshotNamer.title(cg, app: app) } : nil
+        _ = try? await process(url, shrink: shrink, title: namer)
     }
 
     /// True once the file's size has held still for half a second (the Mac writes screenshots in steps).
