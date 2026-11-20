@@ -107,7 +107,7 @@ final class ClipboardHistory {
     static func putShrunk(_ small: Data, key: String, on pb: NSPasteboard) {
         // shortcut: the file lives in the Mac's temp folder, which it clears after a few days; fine for a paste right after copying
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Usage Shelf", isDirectory: true)
-        let url = folder.appendingPathComponent("Image \(key.prefix(8)).png")
+        let url = folder.appendingPathComponent("Image \(key).png")
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let saved = (try? small.write(to: url, options: .atomic)) != nil
         let item = NSPasteboardItem()
