@@ -88,7 +88,9 @@ final class ClipboardHistory {
 
     /// Puts a smaller copy of a copied picture back on the clipboard (as Clop did), unless something else was copied meanwhile.
     private func shrinkCopied(_ c: Clip, on pb: NSPasteboard) {
-        guard c.kind == .image, let level = shrinkLevel?(), let f = c.imageFile, let url = imageURL(f) else { return }
+        // only a plain picture: a copy from a drawing app also carries its own editable data, which must not be lost
+        let plain: Set<NSPasteboard.PasteboardType> = [.png, .tiff, .init("Apple PNG pasteboard type"), .init("NeXT TIFF v4.0 pasteboard type")]
+        guard c.kind == .image, Set(pb.types ?? []).isSubset(of: plain), let level = shrinkLevel?(), let f = c.imageFile, let url = imageURL(f) else { return }
         let change = pb.changeCount
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let png = try? Data(contentsOf: url), let small = PNGShrinker.shrink(png, level) else { return }

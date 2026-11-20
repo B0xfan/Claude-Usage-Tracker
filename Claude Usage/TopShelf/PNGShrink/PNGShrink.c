@@ -18,9 +18,11 @@ static void chunk(unsigned char **at, const char *type, const unsigned char *dat
 }
 
 unsigned char *us_shrink_png(const unsigned char *rgba, int width, int height,
-                             int min_quality, int max_quality, double dpi, size_t *out_len) {
+                             int min_quality, int max_quality, double dpi,
+                             const unsigned char *icc, size_t icc_len, size_t *out_len) {
     if (!rgba || width <= 0 || height <= 0 || !out_len) return NULL;
-    unsigned char *png = NULL, *pixels = NULL, *idat = NULL;
+    unsigned char *png = NULL, *pixels = NULL, *idat = NULL, *iccp = NULL;
+    uLongf iccp_len = 0;
     liq_attr *attr = liq_attr_create();
     liq_image *img = attr ? liq_image_create_rgba(attr, rgba, width, height, 0) : NULL;
     liq_result *res = NULL;
@@ -40,6 +42,16 @@ unsigned char *us_shrink_png(const unsigned char *rgba, int width, int height,
     free(raw);
     if (z != Z_OK) goto done;
 
+    if (icc && icc_len) {   // iCCP: profile name, 0, compression method 0, zlib data
+        static const char name[] = "ICC Profile";
+        uLongf zlen = compressBound((uLong)icc_len);
+        iccp = malloc(sizeof name + 1 + zlen);
+        if (!iccp || compress2(iccp + sizeof name + 1, &zlen, icc, (uLong)icc_len, 9) != Z_OK) goto done;
+        memcpy(iccp, name, sizeof name);   // includes the 0 ending the name
+        iccp[sizeof name] = 0;
+        iccp_len = sizeof name + 1 + zlen;
+    }
+
     const liq_palette *pal = liq_get_palette(res);
     unsigned char plte[768], trns[256];
     uint32_t n = pal->count, trns_len = 0;
@@ -49,7 +61,7 @@ unsigned char *us_shrink_png(const unsigned char *rgba, int width, int height,
         if (trns[i] != 255) trns_len = i + 1;   // tRNS may stop at the last see-through colour
     }
 
-    size_t total = 8 + (12 + 13) + (12 + 1) + (12 + 9) + (12 + n * 3) + (12 + trns_len) + (12 + idat_len) + 12;
+    size_t total = 8 + (12 + 13) + (12 + 1) + (12 + iccp_len) + (12 + 9) + (12 + n * 3) + (12 + trns_len) + (12 + idat_len) + 12;
     png = malloc(total);
     if (!png) goto done;
     unsigned char *p = png;
@@ -59,7 +71,7 @@ unsigned char *us_shrink_png(const unsigned char *rgba, int width, int height,
     ihdr[8] = 8; ihdr[9] = 3; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;   // 8-bit, palette
     chunk(&p, "IHDR", ihdr, 13);
     unsigned char srgb = 0;   // perceptual
-    chunk(&p, "sRGB", &srgb, 1);
+    if (iccp) chunk(&p, "iCCP", iccp, (uint32_t)iccp_len); else chunk(&p, "sRGB", &srgb, 1);
     if (dpi > 0) {
         unsigned char phys[9];
         uint32_t ppm = (uint32_t)(dpi / 0.0254 + 0.5);
@@ -73,7 +85,7 @@ unsigned char *us_shrink_png(const unsigned char *rgba, int width, int height,
     *out_len = (size_t)(p - png);
 
 done:
-    free(pixels); free(idat);
+    free(pixels); free(idat); free(iccp);
     if (res) liq_result_destroy(res);
     if (img) liq_image_destroy(img);
     if (attr) liq_attr_destroy(attr);

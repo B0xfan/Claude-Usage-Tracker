@@ -7,8 +7,10 @@
 /// `rgba`: width*height*4 bytes, sRGB, straight (not premultiplied) alpha.
 /// `min_quality`/`max_quality`: 0-100, as pngquant's --quality; when the engine can't reach `min_quality` it gives up.
 /// `dpi`: written as the PNG's pixel density when above 0 (Retina screenshots are 144).
+/// `icc`: the picture's colour profile, written as the PNG's iCCP; NULL tags the PNG as sRGB.
 /// Returns a malloc'd PNG (free it) and its size in `out_len`, or NULL.
 unsigned char *us_shrink_png(const unsigned char *rgba, int width, int height,
-                             int min_quality, int max_quality, double dpi, size_t *out_len);
+                             int min_quality, int max_quality, double dpi,
+                             const unsigned char *icc, size_t icc_len, size_t *out_len);
 
 #endif

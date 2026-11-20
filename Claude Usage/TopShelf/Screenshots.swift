@@ -32,15 +32,17 @@ nonisolated enum PNGShrinker {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let cg = CGImageSourceCreateImageAtIndex(src, 0, nil),
               let srgb = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        // the picture keeps its own colour profile (screenshots are Display P3), so colours never shift
+        let space = cg.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? srgb
+        let icc = space === srgb ? nil : space.copyICCData() as Data?
         let w = cg.width, h = cg.height
         guard w > 0, h > 0, w * h <= 80_000_000 else { return nil }   // ~8K x 10K; bigger would need over 300 MB
         let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
         let dpi = props?[kCGImagePropertyDPIWidth] as? Double ?? 0
         var px = [UInt8](repeating: 0, count: w * h * 4)
         let drawn = px.withUnsafeMutableBytes { buf -> Bool in
-            // the screen's colours are turned into sRGB, which the PNG is tagged with
             guard let ctx = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
-                                      space: srgb, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+                                      space: icc == nil ? srgb : space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
             ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
             return true
         }
@@ -53,7 +55,9 @@ nonisolated enum PNGShrinker {
         }
         var len = 0
         let q = level.quality
-        guard let out = us_shrink_png(px, Int32(w), Int32(h), q.min, q.max, dpi, &len) else { return nil }
+        let made = icc.map { p in p.withUnsafeBytes { us_shrink_png(px, Int32(w), Int32(h), q.min, q.max, dpi, $0.bindMemory(to: UInt8.self).baseAddress, p.count, &len) } }
+            ?? us_shrink_png(px, Int32(w), Int32(h), q.min, q.max, dpi, nil, 0, &len)
+        guard let out = made else { return nil }
         defer { free(out) }
         return len < data.count ? Data(bytes: out, count: len) : nil
     }
@@ -137,14 +141,17 @@ final class Screenshots {
         return "\(title) (\(f.string(from: date))).\(ext)"
     }
 
+    nonisolated static func isPicture(_ name: String) -> Bool {
+        !name.hasPrefix(".") && ["png", "jpg", "jpeg", "heic"].contains((name as NSString).pathExtension.lowercased())
+    }
+
     nonisolated static func isNamed(_ name: String) -> Bool {
-        name.range(of: #" \(\d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\)\.[A-Za-z]+$"#, options: .regularExpression) != nil
+        name.range(of: #" \(\d{4}-\d{2}-\d{2} \d{2}\.\d{2}\.\d{2}\)( \d+)?\.[A-Za-z]+$"#, options: .regularExpression) != nil
     }
 
     /// A new file to name and shrink: a picture whose name has one of the words and that isn't named yet.
     nonisolated static func isNew(_ name: String, words: [String]) -> Bool {
-        guard !name.hasPrefix("."), ["png", "jpg", "jpeg", "heic"].contains((name as NSString).pathExtension.lowercased()),
-              !isNamed(name) else { return false }
+        guard isPicture(name), !isNamed(name) else { return false }
         return words.contains { !$0.isEmpty && name.localizedCaseInsensitiveContains($0) }
     }
 
@@ -170,9 +177,9 @@ final class Screenshots {
         let name = nameOn
         for file in fresh where Self.isNew(file, words: words) {
             let url = watchFolder.appendingPathComponent(file)
-            Task.detached(priority: .utility) {
+            Task.detached(priority: .utility) { () async -> Void in
                 guard await Self.waitUntilSaved(url) else { return }
-                try? await Self.process(url, shrink: level, title: name ? { await ScreenshotNamer.title($0, app: app) } : nil)
+                _ = try? await Self.process(url, shrink: level, title: name ? { await ScreenshotNamer.title($0, app: app) } : nil)
             }
         }
     }
@@ -204,7 +211,7 @@ final class Screenshots {
             dest = unique(url.deletingLastPathComponent(), namedForm(t, created, ext: ext))
         }
         if let small {
-            try small.write(to: dest, options: .atomic)
+            try small.write(to: dest, options: dest == url ? .atomic : .withoutOverwriting)   // never over another screenshot named at the same moment
             try? FileManager.default.setAttributes([.creationDate: created, .modificationDate: attrs[.modificationDate] ?? created], ofItemAtPath: dest.path)
             if dest != url { try FileManager.default.removeItem(at: url) }
         } else if dest != url {
@@ -229,8 +236,8 @@ final class Screenshots {
     func moveAll() -> Int {
         let fm = FileManager.default
         let names = (try? fm.contentsOfDirectory(atPath: watchFolder.path)) ?? []
-        let shots = names.filter { Self.isNew($0, words: words) || (!$0.hasPrefix(".") && Self.isNamed($0)) }
-        guard !shots.isEmpty, (try? fm.createDirectory(at: moveFolder, withIntermediateDirectories: true)) != nil else { return 0 }
+        let shots = names.filter { Self.isNew($0, words: words) || (Self.isPicture($0) && Self.isNamed($0)) }
+        guard !shots.isEmpty, moveFolder.standardizedFileURL != watchFolder.standardizedFileURL, (try? fm.createDirectory(at: moveFolder, withIntermediateDirectories: true)) != nil else { return 0 }
         return shots.filter { (try? fm.moveItem(at: watchFolder.appendingPathComponent($0), to: Self.unique(moveFolder, $0))) != nil }.count
     }
 }

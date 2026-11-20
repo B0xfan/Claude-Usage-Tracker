@@ -53,6 +53,19 @@ enum ScreenshotChecks {
             if let s = PNGShrinker.shrink(png, level) { XCTAssertLessThan(s.count, png.count, "\(level) never makes it bigger") }
         }
         XCTAssertNil(PNGShrinker.shrink(Data("not a picture".utf8), .smaller))
+        // A Display P3 screenshot keeps its colour profile, so its colours don't shift.
+        let p3 = try XCTUnwrap(CGColorSpace(name: CGColorSpace.displayP3))
+        let ctx = try XCTUnwrap(CGContext(data: nil, width: 300, height: 200, bitsPerComponent: 8, bytesPerRow: 0, space: p3,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        ctx.drawLinearGradient(CGGradient(colorsSpace: p3, colors: [CGColor(red: 1, green: 0, blue: 0, alpha: 1), CGColor(red: 0, green: 1, blue: 0, alpha: 1)] as CFArray, locations: nil)!,
+                               start: .zero, end: CGPoint(x: 300, y: 200), options: [])
+        let p3PNG = NSMutableData()
+        let p3Dest = try XCTUnwrap(CGImageDestinationCreateWithData(p3PNG, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(p3Dest, try XCTUnwrap(ctx.makeImage()), nil)
+        XCTAssertTrue(CGImageDestinationFinalize(p3Dest))
+        let p3Small = try XCTUnwrap(PNGShrinker.shrink(p3PNG as Data, .balanced))
+        let p3Back = try XCTUnwrap(CGImageSourceCreateImageAtIndex(XCTUnwrap(CGImageSourceCreateWithData(p3Small as CFData, nil)), 0, nil))
+        XCTAssertEqual(p3Back.colorSpace?.copyICCData() as Data?, p3.copyICCData() as Data?, "same colour profile")
 
         // Which files count.
         let words = ["Screenshot", "clop", "cleanyard"]
@@ -62,6 +75,7 @@ enum ScreenshotChecks {
         XCTAssertFalse(Screenshots.isNew("Screenshot notes.txt", words: words))
         XCTAssertFalse(Screenshots.isNew("Tilopay settlements (2026-11-19 12.39.10).png", words: words), "already named")
         XCTAssertTrue(Screenshots.isNamed("Tilopay settlements (2026-11-19 12.39.10).png"))
+        XCTAssertFalse(Screenshots.isNew("Screenshot settings (2026-11-19 12.39.10) 2.png", words: words), "a taken-name copy is named too, so it is never renamed again")
         XCTAssertFalse(Screenshots.isNew("Screenshot.png", words: []))
         XCTAssertEqual(ScreenshotNamer.sanitize("\"Tilopay: settlements/report.png\"\n"), "Tilopay settlementsreport")
         XCTAssertEqual(ScreenshotNamer.sanitize(String(repeating: "word ", count: 30)).count, 64)
@@ -108,6 +122,11 @@ enum ScreenshotChecks {
         XCTAssertEqual(Set(try fm.contentsOfDirectory(atPath: shots.moveFolder.path)),
                        ["cleanyard shot.jpg", "cleanyard shot 2.jpg", done.lastPathComponent, second.lastPathComponent])
         XCTAssertEqual(shots.moveAll(), 0)
+        try Data().write(to: dir.appendingPathComponent("Invoice (2026-11-19 12.39.10).pdf"))
+        XCTAssertEqual(shots.moveAll(), 0, "a named file that isn't a picture stays")
+        shots.moveFolder = dir
+        try png.write(to: dir.appendingPathComponent("Screenshot same.png"))
+        XCTAssertEqual(shots.moveAll(), 0, "moving into the watched folder itself does nothing")
 
         // The new shortcut starts with no keys.
         XCTAssertNil(ShortcutAction.moveScreenshots.defaultCombo)
