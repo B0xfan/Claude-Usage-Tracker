@@ -80,9 +80,10 @@ final class KeepAwakeShortcutTests: XCTestCase {
         let result = manager.setShortcut(refresh, for: .keepAwake)
         XCTAssertEqual(result, .duplicate("Refresh usage"))
         XCTAssertEqual(manager.shortcuts[.keepAwake], old)
-        for (keyCode, name) in [(kVK_ANSI_T, "Top Shelf"), (kVK_ANSI_V, "Top Shelf")] {
-            let combo = KeyCombo(keyCode: UInt16(keyCode), modifierFlags: [.command, .option])
-            XCTAssertEqual(manager.setShortcut(combo, for: .keepAwake), .duplicate(name))
+        for action in [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary] {
+            let combo = action.defaultCombo!
+            XCTAssertEqual(manager.setShortcut(combo, for: action), .success)
+            XCTAssertEqual(manager.setShortcut(combo, for: .keepAwake), .duplicate(action.displayName))
             XCTAssertEqual(manager.shortcuts[.keepAwake], old)
         }
         XCTAssertTrue(manager.perform(old))
@@ -97,6 +98,11 @@ final class KeepAwakeShortcutTests: XCTestCase {
         XCTAssertEqual(manager.shortcuts[.keepAwake], old)
         XCTAssertEqual(resultWarning(.registrationFailed, combo: rejected), "This shortcut is already in use. Choose another one.")
         XCTAssertTrue(manager.perform(old))
+        // a shelf key another app already owns is refused too, and the shelf keeps its working key
+        let shelf = ShortcutAction.shelfLibrary.defaultCombo!
+        XCTAssertEqual(manager.setShortcut(shelf, for: .shelfLibrary), .success)
+        XCTAssertEqual(manager.setShortcut(rejected, for: .shelfLibrary), .registrationFailed)
+        XCTAssertEqual(manager.shortcuts[.shelfLibrary], shelf)
     }
 
     func testShortcutSymbolsAreSeparateAndLightPreviewIsActuallyLight() throws {

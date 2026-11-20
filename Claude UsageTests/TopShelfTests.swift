@@ -50,6 +50,7 @@ final class TopShelfTests: XCTestCase {
     func testCalendarWeather() { SelfTest.calendarWeatherTests() }
     func testFiles() { SelfTest.filesTests() }
     func testClipboard() { SelfTest.clipboardTests() }
+    func testScreenshots() async throws { try await ScreenshotChecks.run() }
     func testAgents() { SelfTest.agentsTests() }
     func testListener() { SelfTest.listenerTest() }
 
@@ -301,7 +302,7 @@ extension SelfTest {
         let ideal = NSHostingView(rootView: TopShelfSettingsView(model: m).fixedSize(horizontal: false, vertical: true)).fittingSize.height
         check("settings window: on a short screen it fits inside the visible area (content \(Int(ideal)) pt tall, window \(Int(w.frame.height)) pt)",
               ideal > short.height && short.contains(w.frame) && w.frame.height <= short.height)
-        let tall = NSRect(x: 0, y: 0, width: 1728, height: 1400)
+        let tall = NSRect(x: 0, y: 0, width: 1728, height: 2400)   // taller than all of Settings, Screenshots section included
         SettingsWindow.fit(w, model: m, visible: tall)
         check("settings window: on a tall screen it is just as tall as its content", abs(w.contentLayoutRect.height - ideal) < 2 && tall.contains(w.frame))
         SettingsWindow.fit(w, model: m, visible: short)
@@ -396,6 +397,8 @@ extension SelfTest {
         check("settings: 1 month keeps a 2-day-old clip", m.clipboard.clips.contains { $0.key == "old" })
         m.keepClipsFor = 86400
         check("settings: 1 day drops it at once", !m.clipboard.clips.contains { $0.key == "old" })
+        m.keepClipsMax = 5000
+        check("settings: Keep up to 5,000 reaches the history and is saved", m.clipboard.maxClips == 5000 && ShelfModel().keepClipsMax == 5000)
             }
 
     static func tempDir() -> URL {
@@ -460,6 +463,11 @@ extension SelfTest {
         }
         copy { pb.writeObjects([img]) }
         check("clipboard: a picture is stored", h.clips[0].kind == .image && h.image(h.clips[0]) != nil)
+        let png = d.appendingPathComponent("shot.png")
+        try? NSBitmapImageRep(data: img.tiffRepresentation!)!.representation(using: .png, properties: [:])!.write(to: png)
+        copy { pb.writeObjects([png as NSURL]) }
+        check("clipboard: a copied picture file shows the picture", h.preview(h.clips[0]).map { $0.size.width == 5 * $0.size.height } == true)   // the 600 x 120 picture, not a square icon
+        check("clipboard: a copied file that is gone has no preview", h.preview(h.clips.first { $0.text == "Report.pdf" }!) == nil)
         wait(90) { h.clips.contains { $0.text.contains("4471") } }   // reading a picture can be slow the first time, with the whole suite running
         h.query = "invoice"
         check("clipboard: words inside a picture can be searched", h.visible.first?.kind == .image)
@@ -471,13 +479,91 @@ extension SelfTest {
         h.copy(hello, to: pb); h.poll(pb)
         check("clipboard: copying back puts it on the clipboard", pb.string(forType: .string) == "hello")
         check("clipboard: the history survives a restart", ClipboardHistory(dir: d, live: false).clips.count == h.clips.count)
+        // picking and pasting (phase 1): arrows move on the 4-wide grid and stay on a real tile
+        check("clipboard: right moves one tile", ClipboardHistory.moved(0, .rightArrow, count: 10, columns: 4) == 1)
+        check("clipboard: down moves one row", ClipboardHistory.moved(1, .downArrow, count: 10, columns: 4) == 5)
+        check("clipboard: down past the end stops on the last tile", ClipboardHistory.moved(8, .downArrow, count: 10, columns: 4) == 9)
+        check("clipboard: up and left stop at the first tile", ClipboardHistory.moved(2, .upArrow, count: 10, columns: 4) == 0
+              && ClipboardHistory.moved(0, .leftArrow, count: 10, columns: 4) == 0)
+        check("clipboard: no tiles means place 0", ClipboardHistory.moved(3, .downArrow, count: 0, columns: 4) == 0)
+        h.selected = 2; h.query = "x"
+        check("clipboard: new search words go back to the first tile", h.selected == 0)
+        h.query = ""
+        let m = ShelfModel()
+        var presses = 0
+        m.pressPaste = { presses += 1 }
+        m.open(.clipboard)
+        m.use(hello, paste: false, to: pb)
+        check("clipboard: copy only closes the shelf and copies", !m.isOpen && pb.string(forType: .string) == "hello")
+        wait(0.4) { presses > 0 }
+        check("clipboard: copy only never presses paste", presses == 0)
+        m.open(.clipboard)
+        m.use(hello, paste: true, to: pb)
+        check("clipboard: paste waits for the shelf to hand typing back", presses == 0)
+        wait(5) { presses > 0 }
+        check("clipboard: a click pastes once", presses == 1 && !m.isOpen)
+        h.selected = 1
+        let picked = h.visible[1].id
+        h.togglePin(h.visible[1])
+        check("clipboard: pinning keeps the ring on the same clip", h.visible[h.selected].id == picked)
+        h.togglePin(h.visible[h.selected])
+        check("clipboard: the quiet model never presses keys", ShelfModel().pressPaste == nil)
+
         let picture = h.clips.first { $0.kind == .image }!.imageFile!
         h.prune(now: Date().addingTimeInterval(7 * 86400 + 1))
         check("clipboard: after a week only pinned clips stay", h.clips.map(\.text) == ["hello"])
         check("clipboard: an expired picture is deleted from disk",
               !FileManager.default.fileExists(atPath: d.appendingPathComponent("clipboard-images/" + picture).path))
-        for i in 0..<(ClipboardHistory.maxClips + 5) { h.add(.init(kind: .text, text: "n\(i)", key: "k\(i)", last: Date())) }
-        check("clipboard: at most 200 unpinned clips plus pinned ones", h.clips.count == ClipboardHistory.maxClips + 1)
+        for i in 0..<(h.maxClips + 5) { h.add(.init(kind: .text, text: "n\(i)", key: "k\(i)", last: Date())) }
+        check("clipboard: at most 200 unpinned clips plus pinned ones", h.clips.count == h.maxClips + 1)
+        libraryTests(h)
+    }
+
+    /// Phase 2: the library window's sorting, day groups, arrow keys, delete and history size.
+    static func libraryTests(_ h: ClipboardHistory) {
+        typealias C = ClipboardHistory.Clip
+        func clip(_ t: String, _ k: C.Kind = .text, ago: Double = 0) -> C { C(kind: k, text: t, key: UUID().uuidString, last: Date().addingTimeInterval(-ago)) }
+        check("library: plain words are Text", clip("Hi Ana, the page is live").category == .text)
+        check("library: a web address is a Link", clip("https://github.com/x/y").category == .links)
+        check("library: words with a web address inside stay Text", clip("see https://x.com now").category == .text)
+        check("library: a hex color is a Color", clip("#24a9ff").category == .colors && clip("rgb(10, 20, 30)").category == .colors)
+        check("library: lines of code are Code", clip("func a() {\n  return 1\n}").category == .code)
+        check("library: one line with a brace stays Text", clip("I said {hello}").category == .text)
+        check("library: a letter that says return stays Text", clip("Hi,\nI will return the form tomorrow.").category == .text)
+        check("library: pictures and files keep their own type", clip("", .image).category == .pictures && clip("a.pdf", .files).category == .files)
+        check("library: a 3-digit hex color gets a swatch", ClipboardLibraryView.color("#fff") != nil && ClipboardLibraryView.color("#12345") == nil)
+
+        var pinned = clip("pinned note", ago: 3 * 86400); pinned.pinned = true
+        let list = [clip("https://a.com", ago: 60), clip("today words", ago: 10), clip("old words", ago: 86400 + 60), pinned]
+        let all = ClipboardLibraryView.shown(list, .all, "")
+        check("library: All is newest first", all.map(\.text) == ["today words", "https://a.com", "old words", "pinned note"])
+        check("library: Pinned shows only pinned", ClipboardLibraryView.shown(list, .pinned, "").map(\.text) == ["pinned note"])
+        check("library: a type shows only that type", ClipboardLibraryView.shown(list, .type(.links), "").map(\.text) == ["https://a.com"])
+        check("library: search works inside a type", ClipboardLibraryView.shown(list, .type(.text), "old").map(\.text) == ["old words"])
+        let noon = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: Date())!
+        let dated = [0.0, 60, 86400, 259200].map { C(kind: .text, text: "t", key: "\($0)", last: noon.addingTimeInterval(-$0)) }
+        check("library: clips are grouped Today, Yesterday, then a date",
+              ClipboardLibraryView.days(dated, now: noon).map(\.clips.count) == [2, 1, 1]
+              && ClipboardLibraryView.days(dated, now: noon).prefix(2).map(\.title) == ["Today", "Yesterday"])
+
+        // groups of 4 and 2 tiles, 3 wide: rows [0,1,2] [3] [4,5]
+        let g = [4, 2]
+        check("library: down keeps the column", ClipboardLibraryView.moved(1, .downArrow, groups: g, columns: 3) == 3)
+        check("library: down into the next day keeps the column", ClipboardLibraryView.moved(3, .downArrow, groups: g, columns: 3) == 4)
+        check("library: down on a short row lands on its last tile", ClipboardLibraryView.moved(2, .downArrow, groups: [3, 1], columns: 3) == 3)
+        check("library: up from the next day goes to the row above", ClipboardLibraryView.moved(5, .upArrow, groups: g, columns: 3) == 3)
+        check("library: up on the top row stays", ClipboardLibraryView.moved(2, .upArrow, groups: g, columns: 3) == 2)
+        check("library: down on the last row stays", ClipboardLibraryView.moved(5, .downArrow, groups: g, columns: 3) == 5)
+        check("library: left and right walk the list", ClipboardLibraryView.moved(3, .rightArrow, groups: g, columns: 3) == 4
+              && ClipboardLibraryView.moved(0, .leftArrow, groups: g, columns: 3) == 0)
+        check("library: nothing shown means place 0", ClipboardLibraryView.moved(3, .downArrow, groups: [], columns: 3) == 0)
+
+        let before = h.clips.count
+        let gone = h.clips.last { !$0.pinned }!
+        h.remove(gone)
+        check("library: Delete removes just that clip", h.clips.count == before - 1 && !h.clips.contains { $0.id == gone.id })
+        h.maxClips = 50; h.prune()
+        check("library: a smaller history size applies at once, pinned kept", h.clips.count == 51 && h.clips.contains { $0.pinned })
     }
 
     static func send(_ a: Agents, _ json: String, token: String? = nil, path: String = "/event") -> Agents.Handling {
@@ -771,5 +857,71 @@ final class TopShelfSettingsPageTests: XCTestCase {
             host.cacheDisplay(in: host.bounds, to: rep)
             try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("dynamic-island-page-\(look).png"))
         }
+    }
+}
+
+/// Pictures of the clipboard library window and the full settings page for the cloud run's artifact.
+@MainActor
+final class ClipboardLibraryPictureTests: XCTestCase {
+    func testLibraryAndSettingsPictures() throws {
+        let name = "ClipboardLibraryPictureTests-\(UUID().uuidString)"
+        TopShelfDefaults.store = UserDefaults(suiteName: name)!
+        defer {
+            TopShelfDefaults.store.removePersistentDomain(forName: name)
+            TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
+        }
+        let pics = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        defer { try? FileManager.default.removeItem(at: pics) }
+        let m = ShelfModel(folder: pics)
+        // a wide copied picture, to show it stays inside its tile
+        let wide = NSImage(size: NSSize(width: 1600, height: 500), flipped: false) { r in
+            NSColor.systemPink.setFill(); r.fill()
+            ("A wide picture" as NSString).draw(at: NSPoint(x: 60, y: 200), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 90), .foregroundColor: NSColor.white])
+            return true
+        }
+        let pb = NSPasteboard(name: NSPasteboard.Name(name)); defer { pb.releaseGlobally() }
+        let widePNG = try XCTUnwrap(NSBitmapImageRep(data: XCTUnwrap(wide.tiffRepresentation))?.representation(using: .png, properties: [:]))
+        pb.clearContents(); pb.setData(widePNG, forType: .png); m.clipboard.add(try XCTUnwrap(m.clipboard.read(pb)))  // read, not poll: a fresh pasteboard's change count can equal the general one's
+        let samples: [(String, Double)] = [
+            ("func greet(_ name: String) -> String {\n    return \"Hi \\(name)\"\n}", 86400 + 3600),
+            ("Report.pdf", 86400 + 60),
+            ("#24a9ff", 3000),
+            ("https://github.com/guanacaste-web-services", 600),
+            ("Hi Ana, the new booking page is live. Could you try one test booking from your phone and tell me if the confirmation email arrives?", 60),
+        ]
+        for (t, ago) in samples {
+            m.clipboard.add(.init(kind: t.hasSuffix(".pdf") ? .files : .text, text: t, paths: t.hasSuffix(".pdf") ? ["/tmp/" + t] : nil,
+                                  key: t, last: Date().addingTimeInterval(-ago)))
+        }
+        // a copied picture file (shows the picture) and a copied plain file (shows its icon), newest, so the preview pane shows the picture (nothing pinned, pinned clips would come first)
+        let shot = FileManager.default.temporaryDirectory.appendingPathComponent("clop_2026-11-19_1061.png")
+        defer { try? FileManager.default.removeItem(at: shot) }
+        let drawn = NSImage(size: NSSize(width: 800, height: 500), flipped: false) { r in
+            NSColor(red: 0.14, green: 0.66, blue: 1, alpha: 1).setFill(); r.fill()
+            ("Screenshot" as NSString).draw(at: NSPoint(x: 40, y: 220), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 72), .foregroundColor: NSColor.white])
+            return true
+        }
+        try NSBitmapImageRep(data: XCTUnwrap(drawn.tiffRepresentation))!.representation(using: .png, properties: [:])!.write(to: shot)
+        m.clipboard.add(.init(kind: .files, text: "hosts", paths: ["/etc/hosts"], key: "hosts", last: Date().addingTimeInterval(-40)))
+        m.clipboard.add(.init(kind: .files, text: shot.lastPathComponent, paths: [shot.path], key: "shot", last: Date().addingTimeInterval(-30)))
+        XCTAssertEqual(m.clipboard.clips.count, 8)
+        XCTAssertNotNil(m.clipboard.image(try XCTUnwrap(m.clipboard.clips.first { $0.kind == .image })))
+
+        let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        func shoot<V: View>(_ v: V, _ size: NSSize, _ file: String) throws {
+            let host = NSHostingView(rootView: v.frame(width: size.width, height: size.height))
+            host.appearance = NSAppearance(named: .darkAqua)
+            host.frame = NSRect(origin: .zero, size: size)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))   // lazy grids fill in on the next pass
+            host.layoutSubtreeIfNeeded()
+            let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent(file))
+        }
+        try shoot(ClipboardLibraryView(model: m), NSSize(width: 1100, height: 680), "clipboard-library.png")
+        try shoot(ClipboardPage(model: m).padding(10).background(Color.black), NSSize(width: 640, height: 300), "shelf-clipboard-page.png")
+        try shoot(TopShelfSettingsView(model: m), NSSize(width: 530, height: 1500), "settings-full-dark.png")
     }
 }

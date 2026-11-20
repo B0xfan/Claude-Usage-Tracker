@@ -62,24 +62,37 @@ final class ShelfModel {
     var keepClipsFor: TimeInterval = TopShelfDefaults.store.object(forKey: "keepClipsFor") as? Double ?? 7 * 86400 {
         didSet { TopShelfDefaults.store.set(keepClipsFor, forKey: "keepClipsFor"); clipboard.keepFor = keepClipsFor; clipboard.prune() }
     }
+    /// How many unpinned clipboard items stay (pinned ones never count).
+    var keepClipsMax: Int = TopShelfDefaults.store.object(forKey: "keepClipsMax") as? Int ?? 200 {
+        didSet { TopShelfDefaults.store.set(keepClipsMax, forKey: "keepClipsMax"); clipboard.maxClips = keepClipsMax; clipboard.prune() }
+    }
     var geometry = ShelfNotchGeometry(screenWidth: 1512, leftWidth: 662, rightWidth: 662, topInset: 32, menuBarHeight: 32)
     let music: NowPlaying
     let calendar: CalendarService
     let weather: WeatherService
     let files: FilesTray
     let clipboard: ClipboardHistory
+    let screenshots: Screenshots
     let agents: Agents
 
     /// `live` starts the system services; the self-test and pictures use a quiet model.
-    init(live: Bool = false) {
+    init(live: Bool = false, folder: URL? = nil) {
         music = NowPlaying(resources: live ? Bundle.main.resourceURL : nil)
         calendar = CalendarService(live: live)
         weather = WeatherService(live: live)
-        let dir = live ? supportFolder() : nil
+        let dir = live ? supportFolder() : folder   // pictures tests pass a throwaway folder so copied pictures can be stored
         files = FilesTray(store: dir?.appendingPathComponent("files.json"))
         clipboard = ClipboardHistory(dir: dir, live: live)
+        screenshots = Screenshots(live: live)
         agents = Agents(dir: dir, live: live)
-        if live { agents.onSound = { [weak self] s in self?.soundFile(s).map(AlertSounds.play) } }
+        if live {
+            clipboard.shrinkLevel = { [weak self] in self?.screenshots.copiedLevel }
+            agents.onSound = { [weak self] s in self?.soundFile(s).map(AlertSounds.play) }
+            // without the Accessibility permission the Mac shows its own "allow" box once and the clip stays a plain copy
+            pressPaste = {
+                if AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary) { Self.postPasteKeys() }
+            }
+        }
         agents.onApproval = { [weak self] in
             // a request arrived: put it in front of John, on the page he is already looking at or by opening the shelf
             guard let self, self.openForApproval else { return }
@@ -87,6 +100,7 @@ final class ShelfModel {
         }
         files.keepFor = keepFilesFor > 0 ? keepFilesFor : nil
         clipboard.keepFor = keepClipsFor
+        clipboard.maxClips = keepClipsMax
         files.prune(); clipboard.prune()
         // the old menu stored "hover off" as a negative delay
         if (TopShelfDefaults.store.object(forKey: "hoverDelay") as? Double ?? 0) < 0, TopShelfDefaults.store.string(forKey: "openMode") == nil {
@@ -96,16 +110,43 @@ final class ShelfModel {
 
     func open(_ p: Page, byHover: Bool = false) {
         page = p; openedByHover = byHover; isOpen = true
+        clipboard.selectedID = nil
         files.prune()   // expiry is checked whenever the shelf opens, so nothing old is ever shown
     }
     func close() { isOpen = false }
+
+    /// Presses ⌘V in the app John was in; nil in the self-test and pictures, so nothing is typed anywhere.
+    @ObservationIgnored var pressPaste: (() -> Void)?
+
+    /// Puts a clip on the clipboard, closes the shelf and, when `paste` is on, pastes it where John was typing.
+    /// Without the Accessibility permission the Mac drops the key press, so it stays a copy.
+    /// `wait` is longer from the library window, which first hands the Mac back to the app John was in.
+    func use(_ c: ClipboardHistory.Clip, paste: Bool, to pb: NSPasteboard = .general, wait: TimeInterval = 0.15) {
+        clipboard.copy(c, to: pb)
+        close()
+        guard paste, let press = pressPaste else { return }
+        // wait for the shelf to hand typing back to that app first
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait, execute: press)
+    }
     func toggle(_ p: Page) { if isOpen && page == p { close() } else { open(p) } }
+
+    /// shortcut: key 9 is V on US-style layouts; on Dvorak and similar it presses another key, read the layout if that matters.
+    static func postPasteKeys() {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        for down in [true, false] {
+            let e = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: down)
+            e?.flags = .maskCommand
+            e?.post(tap: .cghidEventTap)
+        }
+    }
 
     /// Something shows beside the closed notch: Claude Code activity or music.
     var showsMusic: Bool { music.isPlaying && music.hasTrack }
     var hasBanners: Bool { showsMusic || agents.activeState != nil }
     /// The gear button opens the Settings window (set by the app).
     @ObservationIgnored var openSettings: (() -> Void)?
+    /// The shelf's "Open library" button opens the clipboard library window (set by the app).
+    @ObservationIgnored var openLibrary: (() -> Void)?
 
     /// Sizes measured from John's screenshots of Bartender's Top Shelf (Retina pictures, 2 pixels per point):
     /// closed with activity it is 254 pt wide around a 179 pt notch (37.5 pt a side), the top flaring out 3 pt;

@@ -23,7 +23,6 @@ final class CleaningOtherInputCoordinator: CleaningOtherInputHandling {
     }
 
     func resume() {
-        if resumeTopShelf { topShelf.resumeAfterCleaning() }
         if resumeShortcuts { shortcuts.startListening() }
         resumeTopShelf = false
         resumeShortcuts = false
@@ -33,15 +32,8 @@ final class CleaningOtherInputCoordinator: CleaningOtherInputHandling {
 extension TopShelfHost {
     func suspendForCleaning() -> Bool {
         guard model != nil else { return false }
-        model?.close()
-        for hotKey in hotKeys { hotKey.unregister() }
-        hotKeys.removeAll()
+        model?.close()   // its shortcuts live in ShortcutManager, which Cleaning Mode pauses on its own
         return true
-    }
-
-    func resumeAfterCleaning() {
-        guard model != nil, hotKeys.isEmpty, !Self.isRunningTests else { return }
-        registerHotKeys()
     }
 }
 
@@ -56,6 +48,5 @@ extension TopShelfHost {
     func resumeAfterCleaningInterruption() {
         guard Constants.NotchHUD.replacedByTopShelf, Self.isRunningTests == false else { return }
         start()
-        resumeAfterCleaning()
     }
 }

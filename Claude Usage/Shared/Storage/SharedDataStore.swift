@@ -74,6 +74,10 @@ class SharedDataStore {
         static let shortcutNextProfile = "shortcutNextProfile"
         static let shortcutKeepAwake = "shortcutKeepAwake"
         static let shortcutCleaningMode = "shortcutCleaningMode"
+        static let shortcutShelfTray = "shortcutShelfTray"
+        static let shortcutShelfClipboard = "shortcutShelfClipboard"
+        static let shortcutShelfLibrary = "shortcutShelfLibrary"
+        static let shortcutMoveScreenshots = "shortcutMoveScreenshots"
 
         // Auto-Switch Profile
         static let autoSwitchProfileEnabled = "autoSwitchProfileEnabled"
@@ -600,6 +604,10 @@ class SharedDataStore {
         case .nextProfile: return Keys.shortcutNextProfile
         case .keepAwake: return Keys.shortcutKeepAwake
         case .cleaningMode: return Keys.shortcutCleaningMode
+        case .shelfTray: return Keys.shortcutShelfTray
+        case .shelfClipboard: return Keys.shortcutShelfClipboard
+        case .shelfLibrary: return Keys.shortcutShelfLibrary
+        case .moveScreenshots: return Keys.shortcutMoveScreenshots
         }
     }
 
@@ -610,13 +618,13 @@ class SharedDataStore {
                 defaults.set(data, forKey: key)
             }
         } else {
-            defaults.removeObject(forKey: key)
+            defaults.set(Data(), forKey: key)   // empty = cleared on purpose, so the starting key stays off
         }
     }
 
     func loadShortcut(for action: ShortcutAction) -> KeyCombo? {
         let key = shortcutKey(for: action)
-        guard let data = defaults.data(forKey: key) else { return nil }
+        guard let data = defaults.data(forKey: key) else { return action.defaultCombo }
         return try? JSONDecoder().decode(KeyCombo.self, from: data)
     }
 

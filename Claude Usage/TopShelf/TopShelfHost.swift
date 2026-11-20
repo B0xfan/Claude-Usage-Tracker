@@ -26,7 +26,6 @@ final class TopShelfHost {
     private(set) var model: ShelfModel?
     private var controller: ShelfController?
     private var statusItem: NSStatusItem?
-    var hotKeys: [HotKey] = []
 
     /// True while the unit tests run inside the app: Top Shelf then stays off (no listener, no notch window).
     static var isRunningTests: Bool { ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil }
@@ -36,7 +35,14 @@ final class TopShelfHost {
         let model = ShelfModel(live: true)
         self.model = model
         controller = ShelfController(model: model)
-        registerHotKeys()
+        ShortcutManager.shared.onShelf = { [weak model] action in
+            switch action {
+            case .shelfTray: model?.toggle(.tray)
+            case .shelfClipboard: model?.toggle(.clipboard)
+            case .moveScreenshots: model?.screenshots.moveAll()
+            default: model?.openLibrary?()
+            }
+        }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "menubar.rectangle", accessibilityDescription: "Top Shelf")
         item.menu = makeMenu(model)
@@ -46,33 +52,47 @@ final class TopShelfHost {
             if let model { self?.statusItem?.isVisible = model.showMenuBarIcon }
         }
         model.openSettings = { [weak model] in if let model { SettingsWindow.show(model) } }
-    }
-
-    /// Shared startup and Cleaning Mode restoration use the same shortcuts.
-    func registerHotKeys() {
-        guard let model, hotKeys.isEmpty else { return }
-        hotKeys = [
-            HotKey(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.tray) },
-            HotKey(keyCode: kVK_ANSI_V, modifiers: cmdKey | optionKey) { [weak model] in model?.toggle(.clipboard) },
-        ]
+        model.openLibrary = { [weak model] in if let model { ClipboardLibraryWindow.show(model) } }
     }
 
     /// Puts the shelf back at the notch (the Settings window's "Show the shelf" button).
     func showShelf() { controller?.showAgain() }
 
     private func makeMenu(_ model: ShelfModel) -> NSMenu {
-        let menu = NSMenu()
-        menu.addItem(item("Open Top Shelf", "t", [.command, .option]) { [weak model] in model?.open(.tray) })
-        menu.addItem(item("Open Clipboard", "v", [.command, .option]) { [weak model] in model?.open(.clipboard) })
+        let menu = ShortcutMenu(title: "")
+        menu.add(MenuAction(title: "Open Top Shelf", key: "") { [weak model] in model?.open(.tray) }, .shelfTray)
+        menu.add(MenuAction(title: "Open Clipboard", key: "") { [weak model] in model?.open(.clipboard) }, .shelfClipboard)
+        menu.add(MenuAction(title: "Open Clipboard Library", key: "") { [weak model] in model?.openLibrary?() }, .shelfLibrary)
         menu.addItem(.separator())
-        menu.addItem(item("Usage Shelf Settings…", "", []) { [weak model] in if let model { SettingsWindow.show(model) } })
+        menu.addItem(MenuAction(title: "Usage Shelf Settings…", key: "") { [weak model] in if let model { SettingsWindow.show(model) } })
         return menu
     }
+}
 
-    private func item(_ title: String, _ key: String, _ mods: NSEvent.ModifierFlags, action: @escaping () -> Void) -> NSMenuItem {
-        let i = MenuAction(title: title, key: key, action: action)
-        i.keyEquivalentModifierMask = mods
-        return i
+/// The menu bar menu: each item shows the shortcut John set in Settings, read again every time it opens.
+final class ShortcutMenu: NSMenu, NSMenuDelegate {
+    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
+    nonisolated deinit {}
+    private var entries: [(NSMenuItem, ShortcutAction)] = []
+    override init(title: String) { super.init(title: title); delegate = self }
+    required init(coder: NSCoder) { fatalError() }
+
+    func add(_ item: NSMenuItem, _ action: ShortcutAction) {
+        entries.append((item, action))
+        addItem(item)
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        for (item, action) in entries { item.showShortcut(ShortcutManager.shared.shortcuts[action]) }
+    }
+}
+
+extension NSMenuItem {
+    /// shortcut: only single-character keys show in the menu (letters, digits, punctuation); F-keys and arrows still work, just unlisted.
+    func showShortcut(_ combo: KeyCombo?) {
+        let name = combo.map { KeyCombo.keyName(for: $0.keyCode) } ?? ""
+        keyEquivalent = name.count == 1 ? name.lowercased() : ""
+        keyEquivalentModifierMask = keyEquivalent.isEmpty ? [] : NSEvent.ModifierFlags(rawValue: combo?.modifierFlags ?? 0)
     }
 }
 
@@ -88,47 +108,4 @@ final class MenuAction: NSMenuItem {
     }
     required init(coder: NSCoder) { fatalError() }
     @objc private func fire() { run() }
-}
-
-/// System-wide shortcut through Carbon, which needs no Accessibility permission. Only answers its own
-/// shortcuts (signature "TSHF"), so the tracker's own shortcuts (ShortcutManager) keep working.
-final class HotKey {
-    // Explicit: an implicit deinit here becomes main-actor isolated and aborts on macOS 15.
-    nonisolated deinit {}
-    static let signature: OSType = 0x5453_4846
-    nonisolated(unsafe) private static var actions: [UInt32: () -> Void] = [:]
-    fileprivate var ref: EventHotKeyRef?
-    private var ownID: UInt32 = 0
-
-    func unregister() {
-        // Carbon also releases process registrations on termination. Explicit
-        // unregister lets Cleaning Mode restore ordinary input early.
-        guard let ref else { return }
-        UnregisterEventHotKey(ref)
-        self.ref = nil
-    }
-
-    init(keyCode: Int, modifiers: Int, action: @escaping () -> Void) {
-        if Self.actions.isEmpty { Self.installHandler() }
-        let id = UInt32(Self.actions.count + 1)
-        Self.actions[id] = action
-        ownID = id
-        RegisterEventHotKey(UInt32(keyCode), UInt32(modifiers), EventHotKeyID(signature: Self.signature, id: id),
-                            GetApplicationEventTarget(), 0, &ref)
-        Self.activeIDs.insert(id)
-    }
-
-    nonisolated(unsafe) private static var activeIDs: Set<UInt32> = []
-
-    private static func installHandler() {
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
-            var id = EventHotKeyID()
-            GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
-                              MemoryLayout<EventHotKeyID>.size, nil, &id)
-            guard id.signature == 0x5453_4846, let action = HotKey.actions[id.id] else { return OSStatus(eventNotHandledErr) }
-            if HotKey.activeIDs.contains(id.id) { action() }
-            return noErr
-        }, 1, &spec, nil, nil)
-    }
 }

@@ -6,6 +6,10 @@ struct TopShelfSettingsView: View {
     @Bindable var model: ShelfModel
     /// Set only in the Usage Shelf Settings window, where the shelf may be missing from the notch.
     var showShelf: (() -> Void)? = nil
+    @State private var shrinkTo: Int?
+    @State private var combos: [ShortcutAction: KeyCombo?] = Dictionary(uniqueKeysWithValues:
+        [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary, .moveScreenshots].map { ($0, ShortcutManager.shared.shortcuts[$0]) })
+    @State private var shortcutWarning: String?
 
     var body: some View {
         Form {
@@ -47,10 +51,36 @@ struct TopShelfSettingsView: View {
                 Picker("Keep clipboard items for", selection: $model.keepClipsFor) {
                     Text("1 day").tag(86400.0); Text("1 week").tag(604800.0); Text("1 month").tag(2592000.0)
                 }
+                Picker(selection: Binding(get: { model.keepClipsMax }, set: { n in
+                    // a smaller size deletes clips for good, so ask first when it would
+                    if model.clipboard.clips.filter({ !$0.pinned }).count > n { shrinkTo = n } else { model.keepClipsMax = n }
+                })) {
+                    Text("200").tag(200); Text("1,000").tag(1000); Text("5,000").tag(5000)
+                } label: {
+                    Text("Keep up to")
+                    Text("Pinned clips never count toward this.")
+                }
+                .pickerStyle(.segmented)
+                .confirmationDialog("Delete older clips?", isPresented: Binding(get: { shrinkTo != nil }, set: { if !$0 { shrinkTo = nil } })) {
+                    Button("Delete \(((model.clipboard.clips.filter { !$0.pinned }.count) - (shrinkTo ?? 0)).formatted()) clips", role: .destructive) {
+                        if let n = shrinkTo { model.keepClipsMax = n }
+                        shrinkTo = nil
+                    }
+                } message: {
+                    Text("Only the newest \((shrinkTo ?? 0).formatted()) are kept. Pinned clips stay. This can't be undone.")
+                }
             }
-            Section("Keyboard shortcuts") {
-                LabeledContent("Open the shelf") { keycap("⌥⌘T") }
-                LabeledContent("Open the clipboard") { keycap("⌥⌘V") }
+            ScreenshotSettings(shots: model.screenshots)
+            Section {
+                shortcut(.shelfTray)
+                shortcut(.shelfClipboard)
+                shortcut(.shelfLibrary)
+                shortcut(.moveScreenshots)
+                if let shortcutWarning { Text(shortcutWarning).font(.caption).foregroundStyle(.orange) }
+            } header: {
+                Text("Keyboard shortcuts")
+            } footer: {
+                Text("Click a shortcut, then press the keys you want. Clear it to turn it off.").font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)   // a grouped Form scrolls by itself when the window is shorter than its content
@@ -70,10 +100,18 @@ struct TopShelfSettingsView: View {
         }
     }
 
-    private func keycap(_ keys: String) -> some View {
-        Text(keys).font(.system(size: 12, design: .monospaced))
-            .padding(.horizontal, 7).padding(.vertical, 2)
-            .background(Color.secondary.opacity(0.2), in: RoundedRectangle(cornerRadius: 5))
+    /// Same recorder and clash check as the tracker's own Shortcuts page.
+    private func shortcut(_ action: ShortcutAction) -> some View {
+        LabeledContent(action.displayName) {
+            ShortcutRecorderView(keyCombo: Binding(
+                get: { combos[action] ?? nil },
+                set: { newValue in
+                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
+                    shortcutWarning = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
+                    combos[action] = ShortcutManager.shared.shortcuts[action]
+                }
+            ))
+        }
     }
 }
 
@@ -205,5 +243,103 @@ struct SoundSettings: View {
             }
         }
         .disabled(!on)
+    }
+}
+
+/// Screenshot naming, shrinking and moving (from File Sorter and Clop), as in the approved screenshot settings mockup.
+struct ScreenshotSettings: View {
+    @Bindable var shots: Screenshots
+    @State private var newWord = ""
+    @State private var adding = false
+    @State private var moved: Int?
+
+    var body: some View {
+        Section {
+            Toggle(isOn: $shots.nameOn) {
+                Text("Name new screenshots with Apple Intelligence")
+                Text("Like \u{201C}Tilopay settlements (2026-11-19 12.39.10).png\u{201D}")
+            }
+            .toggleStyle(.switch)
+            Toggle(isOn: $shots.shrinkOn) {
+                Text("Shrink new screenshots")
+                Text("Named and shrunk in one step, so the file is saved only once")
+            }
+            .toggleStyle(.switch)
+            Toggle(isOn: $shots.shrinkCopiedOn) {
+                Text("Shrink copied pictures")
+                Text("A picture you copy is made smaller before you paste it")
+            }
+            .toggleStyle(.switch)
+            Picker(selection: $shots.level) {
+                ForEach(ShrinkLevel.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            } label: {
+                Text("Shrink by")
+                Text(shots.level.help)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!shots.shrinkOn && !shots.shrinkCopiedOn)
+            folderRow("Watch for screenshots in", shots.watchFolder) { shots.watchFolder = $0 }
+            LabeledContent {
+                HStack(spacing: 6) {
+                    ForEach(shots.words, id: \.self) { w in
+                        HStack(spacing: 3) {
+                            Text(w)
+                            Button { shots.words.removeAll { $0 == w } } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
+                                .buttonStyle(.borderless).accessibilityLabel("Remove \(w)")
+                        }
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Capsule().fill(.quaternary))
+                    }
+                    if adding {
+                        TextField("Word", text: $newWord).frame(width: 90).textFieldStyle(.roundedBorder)
+                            .onSubmit {
+                                let w = newWord.trimmingCharacters(in: .whitespaces)
+                                if !w.isEmpty, !shots.words.contains(where: { $0.caseInsensitiveCompare(w) == .orderedSame }) { shots.words.append(w) }
+                                newWord = ""; adding = false
+                            }
+                    } else {
+                        Button("+ Add") { adding = true }.buttonStyle(.borderless)
+                    }
+                }
+            } label: {
+                Text("Files that count as screenshots")
+                Text("A file whose name contains any of these words")
+            }
+        } header: {
+            Text("Screenshots")
+        } footer: {
+            Text("Names come from Apple Intelligence on this Mac. Nothing leaves your Mac. Without Apple Intelligence, screenshots are only shrunk.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        Section("Moving screenshots") {
+            folderRow("Move screenshots to", shots.moveFolder) { shots.moveFolder = $0 }
+            LabeledContent("Move them now") {
+                HStack(spacing: 8) {
+                    if let moved { Text(moved == 1 ? "Moved 1" : "Moved \(moved)").foregroundStyle(.secondary) }
+                    Button("Move") { moved = shots.moveAll() }
+                }
+            }
+        }
+    }
+
+    /// A folder shown the Finder way ("Pictures › Screenshots"), with a Choose… button.
+    private func folderRow(_ title: String, _ url: URL, set: @escaping (URL) -> Void) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 8) {
+                Text(Self.shown(url)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                Button("Choose…") {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = true
+                    panel.directoryURL = url
+                    if panel.runModal() == .OK, let picked = panel.url { set(picked) }
+                }
+            }
+        }
+    }
+
+    static func shown(_ url: URL) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let path = url.path.hasPrefix(home + "/") ? String(url.path.dropFirst(home.count + 1)) : url.path
+        return path.split(separator: "/").joined(separator: " \u{203A} ")
     }
 }
