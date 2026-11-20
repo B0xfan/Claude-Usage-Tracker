@@ -183,8 +183,11 @@ final class Screenshots {
 
     nonisolated static func handle(_ url: URL, shrink: ShrinkLevel?, name: Bool, app: String?) async {
         guard await waitUntilSaved(url) else { return }
-        let namer: ((CGImage) async -> String?)? = name ? { cg in await ScreenshotNamer.title(cg, app: app) } : nil
-        _ = try? await process(url, shrink: shrink, title: namer)
+        if name {
+            _ = try? await process(url, shrink: shrink, title: { (cg: CGImage) async -> String? in await ScreenshotNamer.title(cg, app: app) })
+        } else {
+            _ = try? await process(url, shrink: shrink, title: nil)
+        }
     }
 
     /// True once the file's size has held still for half a second (the Mac writes screenshots in steps).
