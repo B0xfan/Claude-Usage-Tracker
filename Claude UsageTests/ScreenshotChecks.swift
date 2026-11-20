@@ -21,7 +21,7 @@ enum ScreenshotChecks {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
         NSGradient(starting: .systemBlue, ending: .systemTeal)!.draw(in: NSRect(x: 0, y: 0, width: width, height: height), angle: 30)
-        ("Tilopay settlements" as NSString).draw(at: NSPoint(x: 40, y: 180), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 40), .foregroundColor: NSColor.white])
+        ("Login page" as NSString).draw(at: NSPoint(x: 40, y: 180), withAttributes: [.font: NSFont.boldSystemFont(ofSize: 40), .foregroundColor: NSColor.white])
         NSColor.clear.set()
         NSRect(x: 0, y: 0, width: 40, height: 40).fill(using: .copy)
         NSColor.red.withAlphaComponent(0.5).set()
@@ -74,14 +74,14 @@ enum ScreenshotChecks {
         XCTAssertTrue(Screenshots.isNew("CLOP_2026-11-19_1061.png", words: words))
         XCTAssertFalse(Screenshots.isNew(".Screenshot 2026-11-19 at 12.39.10.png", words: words), "the Mac's hidden file while it saves")
         XCTAssertFalse(Screenshots.isNew("Screenshot notes.txt", words: words))
-        XCTAssertFalse(Screenshots.isNew("Tilopay settlements (2026-11-19 12.39.10).png", words: words), "already named")
-        XCTAssertTrue(Screenshots.isNamed("Tilopay settlements (2026-11-19 12.39.10).png"))
+        XCTAssertFalse(Screenshots.isNew("Login page (2026-11-19 12.39.10).png", words: words), "already named")
+        XCTAssertTrue(Screenshots.isNamed("Login page (2026-11-19 12.39.10).png"))
         XCTAssertFalse(Screenshots.isNew("Screenshot settings (2026-11-19 12.39.10) 2.png", words: words), "a taken-name copy is named too, so it is never renamed again")
         XCTAssertFalse(Screenshots.isNew("Screenshot.png", words: []))
-        XCTAssertEqual(ScreenshotNamer.sanitize("\"Tilopay: settlements/report.png\"\n"), "Tilopay settlementsreport")
+        XCTAssertEqual(ScreenshotNamer.sanitize("\"Login: page/report.png\"\n"), "Login pagereport")
         XCTAssertEqual(ScreenshotNamer.sanitize(String(repeating: "word ", count: 30)).count, 64)
         let date = DateComponents(calendar: .current, year: 2026, month: 11, day: 19, hour: 12, minute: 39, second: 10).date!
-        XCTAssertEqual(Screenshots.namedForm("Tilopay settlements", date, ext: "png"), "Tilopay settlements (2026-11-19 12.39.10).png")
+        XCTAssertEqual(Screenshots.namedForm("Login page", date, ext: "png"), "Login page (2026-11-19 12.39.10).png")
 
         // One step: named and shrunk, written once, original gone, nothing else in the folder.
         let fm = FileManager.default
@@ -91,8 +91,8 @@ enum ScreenshotChecks {
         let shot = dir.appendingPathComponent("Screenshot 2026-11-19 at 12.39.10.png")
         try png.write(to: shot)
         try fm.setAttributes([.creationDate: date], ofItemAtPath: shot.path)
-        let done = try await Screenshots.process(shot, shrink: .balanced, title: { _ in "Tilopay settlements" })
-        XCTAssertEqual(done.lastPathComponent, "Tilopay settlements (2026-11-19 12.39.10).png")
+        let done = try await Screenshots.process(shot, shrink: .balanced, title: { _ in "Login page" })
+        XCTAssertEqual(done.lastPathComponent, "Login page (2026-11-19 12.39.10).png")
         XCTAssertFalse(fm.fileExists(atPath: shot.path))
         XCTAssertLessThan(try Data(contentsOf: done).count, png.count)
         XCTAssertEqual(try fm.contentsOfDirectory(atPath: dir.path), [done.lastPathComponent])
@@ -107,8 +107,8 @@ enum ScreenshotChecks {
         let again = dir.appendingPathComponent("Screenshot again.png")
         try png.write(to: again)
         try fm.setAttributes([.creationDate: date], ofItemAtPath: again.path)
-        let second = try await Screenshots.process(again, shrink: nil, title: { _ in "Tilopay settlements" })
-        XCTAssertEqual(second.lastPathComponent, "Tilopay settlements (2026-11-19 12.39.10) 2.png")
+        let second = try await Screenshots.process(again, shrink: nil, title: { _ in "Login page" })
+        XCTAssertEqual(second.lastPathComponent, "Login page (2026-11-19 12.39.10) 2.png")
         XCTAssertEqual(try Data(contentsOf: second), png, "naming alone moves the file without rewriting it")
 
         // Moving: screenshots (named or not) go, other files stay; clashes get " 2".

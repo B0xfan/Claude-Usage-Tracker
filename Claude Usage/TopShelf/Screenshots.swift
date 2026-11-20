@@ -133,7 +133,7 @@ final class Screenshots {
         if live { watch() }
     }
 
-    /// The name a screenshot gets: "Tilopay settlements (2026-11-19 12.39.10).png".
+    /// The name a screenshot gets: "Login page (2026-11-19 12.39.10).png".
     nonisolated static func namedForm(_ title: String, _ date: Date, ext: String) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")

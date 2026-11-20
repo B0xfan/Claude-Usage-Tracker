@@ -76,6 +76,14 @@ class MenuBarManager: NSObject, ObservableObject {
     let keepAwake = KeepAwakeController.shared
     let cleaningMode = CleaningModeController.shared
     private var cleaningSettingsObserver: NSObjectProtocol?
+    private var shelfSettingsObserver: NSObjectProtocol?
+
+    /// Listens for Settings requests from the moment the app starts, so the shelf's gear opens Settings
+    /// even before the usage circles are set up (first-run setup) or when they are not showing.
+    override init() {
+        super.init()
+        registerCleaningSettingsObserver()
+    }
 
     // Combine cancellables for profile observation
     private var cancellables = Set<AnyCancellable>()
@@ -284,6 +292,7 @@ class MenuBarManager: NSObject, ObservableObject {
         ShortcutManager.shared.stopListening()
         cleaningMode.cleanup()
         if let cleaningSettingsObserver { NotificationCenter.default.removeObserver(cleaningSettingsObserver) }
+        if let shelfSettingsObserver { NotificationCenter.default.removeObserver(shelfSettingsObserver) }
         keepAwake.cleanup()
         refreshTimer?.invalidate()
         refreshTimer = nil
@@ -705,12 +714,18 @@ class MenuBarManager: NSObject, ObservableObject {
 
     private func presentCleaningSettings() {
         cleaningMode.consumeSettingsRequest()
+        presentSettings(at: .cleaningMode)
+    }
+
+    /// The one Settings window, opened at a section (the shelf's gear and menu open it at the shelf's section).
+    private func presentSettings(at section: SettingsSection) {
         closePopoverOrWindow()
         NSApp.setActivationPolicy(.regular)
         let window: NSWindow
         if let existing = settingsWindow {
             window = existing
         } else {
+            SettingsView.openAt = section
             let created = SettingsWindowBuilder.makeWindow(size: Constants.WindowSizes.settingsWindow)
             created.title = "Usage Shelf Settings"
             created.center()
@@ -721,13 +736,16 @@ class MenuBarManager: NSObject, ObservableObject {
         }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        NotificationCenter.default.post(name: .selectSettingsSection, object: SettingsSection.cleaningMode)
+        NotificationCenter.default.post(name: .selectSettingsSection, object: section)
     }
 
     private func registerCleaningSettingsObserver() {
         guard cleaningSettingsObserver == nil else { return }
         cleaningSettingsObserver = NotificationCenter.default.addObserver(forName: .showCleaningModeSettings, object: nil, queue: .main) { [weak self] _ in
             self?.presentCleaningSettings()
+        }
+        shelfSettingsObserver = NotificationCenter.default.addObserver(forName: .showShelfSettings, object: nil, queue: .main) { [weak self] _ in
+            self?.presentSettings(at: .notchHUD)
         }
     }
 

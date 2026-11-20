@@ -239,9 +239,12 @@ struct TrafficLightButton: View {
 extension Notification.Name {
     static let showCleaningModeSettings = Notification.Name("showCleaningModeSettings")
     static let selectSettingsSection = Notification.Name("selectSettingsSection")
+    static let showShelfSettings = Notification.Name("showShelfSettings")
 }
 
 struct SettingsView: View {
+    /// The section a newly made window opens at (a fresh window is not listening yet when the section is posted).
+    nonisolated(unsafe) static var openAt: SettingsSection?   // only touched on the main thread
     @State private var selectedSection: SettingsSection = .appearance
     @StateObject private var profileManager = ProfileManager.shared
     @Environment(\.colorScheme) private var colorScheme
@@ -342,6 +345,7 @@ struct SettingsView: View {
         }
         .frame(minWidth: 720, maxWidth: 720, maxHeight: .infinity)
         .background(SettingsBackground())
+        .onAppear { if let s = Self.openAt { selectedSection = s; Self.openAt = nil } }
         .onReceive(NotificationCenter.default.publisher(for: .selectSettingsSection)) { notification in
             if let section = notification.object as? SettingsSection { selectedSection = section }
         }

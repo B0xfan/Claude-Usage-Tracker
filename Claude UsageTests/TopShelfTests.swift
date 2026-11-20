@@ -44,7 +44,6 @@ final class TopShelfTests: XCTestCase {
 
     func testSounds() { SelfTest.soundTests() }
     func testSettings() { SelfTest.settingsTests() }
-    func testSettingsWindow() { SelfTest.settingsWindowTests() }
     func testShelf() { SelfTest.shelfTests() }
     func testMusic() { SelfTest.musicTests() }
     func testCalendarWeather() { SelfTest.calendarWeatherTests() }
@@ -294,26 +293,6 @@ extension SelfTest {
         for k in ["questionSoundOn", "questionSound", "finishedSoundOn", "finishedSound"] { TopShelfDefaults.store.removeObject(forKey: k) }
     }
 
-    static func settingsWindowTests() {
-        let m = ShelfModel()
-        let w = SettingsWindow.make(m)
-        let short = NSRect(x: 0, y: 70, width: 1280, height: 560)   // a short screen: menu bar and Dock taken off
-        SettingsWindow.fit(w, model: m, visible: short)
-        let ideal = NSHostingView(rootView: TopShelfSettingsView(model: m).fixedSize(horizontal: false, vertical: true)).fittingSize.height
-        check("settings window: on a short screen it fits inside the visible area (content \(Int(ideal)) pt tall, window \(Int(w.frame.height)) pt)",
-              ideal > short.height && short.contains(w.frame) && w.frame.height <= short.height)
-        let tall = NSRect(x: 0, y: 0, width: 1728, height: 2400)   // taller than all of Settings, Screenshots section included
-        SettingsWindow.fit(w, model: m, visible: tall)
-        check("settings window: on a tall screen it is just as tall as its content", abs(w.contentLayoutRect.height - ideal) < 2 && tall.contains(w.frame))
-        SettingsWindow.fit(w, model: m, visible: short)
-        let scrolls = w.contentView.map { v in
-            v.layoutSubtreeIfNeeded()
-            func find(_ v: NSView) -> NSScrollView? { (v as? NSScrollView) ?? v.subviews.lazy.compactMap(find).first }
-            return find(v).map { $0.documentView.map { $0.frame.height > $0.visibleRect.height + 1 } ?? false } ?? false
-        } ?? false
-        check("settings window: the content scrolls when it doesn't fit", scrolls)
-        w.close()
-    }
 
     static func settingsTests() {
         let m = ShelfModel()

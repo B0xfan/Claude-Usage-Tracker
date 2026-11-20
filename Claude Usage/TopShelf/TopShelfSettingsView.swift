@@ -115,45 +115,6 @@ struct TopShelfSettingsView: View {
     }
 }
 
-/// One Settings window, opened from the gear button and the menu bar icon.
-enum SettingsWindow {
-    private static var window: NSWindow?
-
-    static func show(_ model: ShelfModel) {
-        if window == nil { window = make(model) }
-        // sized on opening only, so a window already open (or resized by John) stays as it is
-        if let w = window, !w.isVisible, let visible = (NSScreen.main ?? w.screen)?.visibleFrame { fit(w, model: model, visible: visible) }
-        model.close()
-        NSApp.activate(ignoringOtherApps: true)   // Top Shelf has no Dock icon; bring the window forward
-        window?.makeKeyAndOrderFront(nil)
-    }
-
-    static func make(_ model: ShelfModel) -> NSWindow {
-        let host = NSHostingController(rootView: TopShelfSettingsView(model: model))
-        host.sizingOptions = []   // the window keeps the size given below instead of growing to fit everything
-        let w = NSWindow(contentViewController: host)
-        w.title = "Usage Shelf Settings"
-        w.styleMask = [.titled, .closable, .resizable]
-        w.isReleasedWhenClosed = false
-        return w
-    }
-
-    /// The window is as tall as its content, but never taller than the screen between the menu bar and the Dock
-    /// (`visible`); then the content scrolls. Width stays fixed.
-    static func fit(_ w: NSWindow, model: ShelfModel, visible: NSRect) {
-        let ideal = NSHostingView(rootView: TopShelfSettingsView(model: model).fixedSize(horizontal: false, vertical: true)).fittingSize.height
-        let room = w.contentRect(forFrameRect: NSRect(origin: .zero, size: visible.size)).height
-        let height = min(ideal, room)
-        w.contentMinSize = NSSize(width: 520, height: min(200, room))
-        w.contentMaxSize = NSSize(width: 520, height: room)
-        w.setContentSize(NSSize(width: 520, height: height))
-        var f = w.frame   // centred, then kept inside the visible area
-        f.origin.x = visible.midX - f.width / 2
-        f.origin.y = min(max(visible.midY - f.height / 2, visible.minY), visible.maxY - f.height)
-        w.setFrame(f, display: false)
-    }
-}
-
 /// Weather for the current location or a picked place, as in the approved settings mockup.
 struct WeatherSettings: View {
     @Bindable var weather: WeatherService
@@ -257,7 +218,7 @@ struct ScreenshotSettings: View {
         Section {
             Toggle(isOn: $shots.nameOn) {
                 Text("Name new screenshots with Apple Intelligence")
-                Text("Like \u{201C}Tilopay settlements (2026-11-19 12.39.10).png\u{201D}")
+                Text("Like \u{201C}Login page (2026-11-19 12.39.10).png\u{201D}")
             }
             .toggleStyle(.switch)
             Toggle(isOn: $shots.shrinkOn) {
