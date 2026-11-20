@@ -50,6 +50,7 @@ final class TopShelfTests: XCTestCase {
     func testCalendarWeather() { SelfTest.calendarWeatherTests() }
     func testFiles() { SelfTest.filesTests() }
     func testClipboard() { SelfTest.clipboardTests() }
+    func testScreenshots() async throws { try await ScreenshotChecks.run() }
     func testAgents() { SelfTest.agentsTests() }
     func testListener() { SelfTest.listenerTest() }
 

@@ -78,7 +78,27 @@ final class ClipboardHistory {
     func poll(_ pb: NSPasteboard) {
         guard pb.changeCount != lastChange else { return }
         lastChange = pb.changeCount
-        if let c = read(pb) { add(c) }
+        guard let c = read(pb) else { return }
+        add(c)
+        shrinkCopied(c, on: pb)
+    }
+
+    /// The level copied pictures are shrunk at (Settings > Screenshots), nil when off; set only in the live app.
+    @ObservationIgnored var shrinkLevel: (() -> ShrinkLevel?)?
+
+    /// Puts a smaller copy of a copied picture back on the clipboard (as Clop did), unless something else was copied meanwhile.
+    private func shrinkCopied(_ c: Clip, on pb: NSPasteboard) {
+        guard c.kind == .image, let level = shrinkLevel?(), let f = c.imageFile, let url = imageURL(f) else { return }
+        let change = pb.changeCount
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let png = try? Data(contentsOf: url), let small = PNGShrinker.shrink(png, level) else { return }
+            DispatchQueue.main.async {
+                guard let self, pb.changeCount == change else { return }
+                pb.clearContents()
+                pb.setData(small, forType: .png)
+                self.lastChange = pb.changeCount
+            }
+        }
     }
 
     /// The newest clip on a pasteboard, or nil for private or empty ones.

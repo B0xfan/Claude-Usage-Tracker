@@ -44,6 +44,7 @@ enum ShortcutAction: String, CaseIterable {
     case shelfTray
     case shelfClipboard
     case shelfLibrary
+    case moveScreenshots
 
     /// The key a shortcut starts with before John sets or clears it (the shelf's long-standing keys).
     var defaultCombo: KeyCombo? {
@@ -67,6 +68,7 @@ enum ShortcutAction: String, CaseIterable {
         case .shelfTray: return "Open the shelf"
         case .shelfClipboard: return "Open the clipboard"
         case .shelfLibrary: return "Open the clipboard library"
+        case .moveScreenshots: return "Move screenshots off the Desktop"
         }
     }
 }
@@ -329,7 +331,7 @@ struct KeyCombo: Codable, Equatable, Hashable {
         case .nextProfile: onNextProfile?()
         case .keepAwake: onToggleKeepAwake?()
         case .cleaningMode: onStartCleaningMode?()
-        case .shelfTray, .shelfClipboard, .shelfLibrary: onShelf?(action)
+        case .shelfTray, .shelfClipboard, .shelfLibrary, .moveScreenshots: onShelf?(action)
         }
     }
 }

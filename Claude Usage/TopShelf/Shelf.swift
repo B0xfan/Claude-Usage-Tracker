@@ -72,6 +72,7 @@ final class ShelfModel {
     let weather: WeatherService
     let files: FilesTray
     let clipboard: ClipboardHistory
+    let screenshots: Screenshots
     let agents: Agents
 
     /// `live` starts the system services; the self-test and pictures use a quiet model.
@@ -82,8 +83,10 @@ final class ShelfModel {
         let dir = live ? supportFolder() : folder   // pictures tests pass a throwaway folder so copied pictures can be stored
         files = FilesTray(store: dir?.appendingPathComponent("files.json"))
         clipboard = ClipboardHistory(dir: dir, live: live)
+        screenshots = Screenshots(live: live)
         agents = Agents(dir: dir, live: live)
         if live {
+            clipboard.shrinkLevel = { [weak self] in self?.screenshots.copiedLevel }
             agents.onSound = { [weak self] s in self?.soundFile(s).map(AlertSounds.play) }
             // without the Accessibility permission the Mac shows its own "allow" box once and the clip stays a plain copy
             pressPaste = {

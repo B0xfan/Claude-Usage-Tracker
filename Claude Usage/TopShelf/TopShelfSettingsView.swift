@@ -8,7 +8,7 @@ struct TopShelfSettingsView: View {
     var showShelf: (() -> Void)? = nil
     @State private var shrinkTo: Int?
     @State private var combos: [ShortcutAction: KeyCombo?] = Dictionary(uniqueKeysWithValues:
-        [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary].map { ($0, ShortcutManager.shared.shortcuts[$0]) })
+        [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary, .moveScreenshots].map { ($0, ShortcutManager.shared.shortcuts[$0]) })
     @State private var shortcutWarning: String?
 
     var body: some View {
@@ -70,10 +70,12 @@ struct TopShelfSettingsView: View {
                     Text("Only the newest \((shrinkTo ?? 0).formatted()) are kept. Pinned clips stay. This can't be undone.")
                 }
             }
+            ScreenshotSettings(shots: model.screenshots)
             Section {
                 shortcut(.shelfTray)
                 shortcut(.shelfClipboard)
                 shortcut(.shelfLibrary)
+                shortcut(.moveScreenshots)
                 if let shortcutWarning { Text(shortcutWarning).font(.caption).foregroundStyle(.orange) }
             } header: {
                 Text("Keyboard shortcuts")
@@ -241,5 +243,103 @@ struct SoundSettings: View {
             }
         }
         .disabled(!on)
+    }
+}
+
+/// Screenshot naming, shrinking and moving (from File Sorter and Clop), as in the approved screenshot settings mockup.
+struct ScreenshotSettings: View {
+    @Bindable var shots: Screenshots
+    @State private var newWord = ""
+    @State private var adding = false
+    @State private var moved: Int?
+
+    var body: some View {
+        Section {
+            Toggle(isOn: $shots.nameOn) {
+                Text("Name new screenshots with Apple Intelligence")
+                Text("Like \u{201C}Tilopay settlements (2026-11-19 12.39.10).png\u{201D}")
+            }
+            .toggleStyle(.switch)
+            Toggle(isOn: $shots.shrinkOn) {
+                Text("Shrink new screenshots")
+                Text("Named and shrunk in one step, so the file is saved only once")
+            }
+            .toggleStyle(.switch)
+            Toggle(isOn: $shots.shrinkCopiedOn) {
+                Text("Shrink copied pictures")
+                Text("A picture you copy is made smaller before you paste it")
+            }
+            .toggleStyle(.switch)
+            Picker(selection: $shots.level) {
+                ForEach(ShrinkLevel.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            } label: {
+                Text("Shrink by")
+                Text(shots.level.help)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!shots.shrinkOn && !shots.shrinkCopiedOn)
+            folderRow("Watch for screenshots in", shots.watchFolder) { shots.watchFolder = $0 }
+            LabeledContent {
+                HStack(spacing: 6) {
+                    ForEach(shots.words, id: \.self) { w in
+                        HStack(spacing: 3) {
+                            Text(w)
+                            Button { shots.words.removeAll { $0 == w } } label: { Image(systemName: "xmark").font(.system(size: 8, weight: .bold)) }
+                                .buttonStyle(.borderless).accessibilityLabel("Remove \(w)")
+                        }
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Capsule().fill(.quaternary))
+                    }
+                    if adding {
+                        TextField("Word", text: $newWord).frame(width: 90).textFieldStyle(.roundedBorder)
+                            .onSubmit {
+                                let w = newWord.trimmingCharacters(in: .whitespaces)
+                                if !w.isEmpty, !shots.words.contains(where: { $0.caseInsensitiveCompare(w) == .orderedSame }) { shots.words.append(w) }
+                                newWord = ""; adding = false
+                            }
+                    } else {
+                        Button("+ Add") { adding = true }.buttonStyle(.borderless)
+                    }
+                }
+            } label: {
+                Text("Files that count as screenshots")
+                Text("A file whose name contains any of these words")
+            }
+        } header: {
+            Text("Screenshots")
+        } footer: {
+            Text("Names come from Apple Intelligence on this Mac. Nothing leaves your Mac. Without Apple Intelligence, screenshots are only shrunk.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        Section("Moving screenshots") {
+            folderRow("Move screenshots to", shots.moveFolder) { shots.moveFolder = $0 }
+            LabeledContent("Move them now") {
+                HStack(spacing: 8) {
+                    if let moved { Text(moved == 1 ? "Moved 1" : "Moved \(moved)").foregroundStyle(.secondary) }
+                    Button("Move") { moved = shots.moveAll() }
+                }
+            }
+        }
+    }
+
+    /// A folder shown the Finder way ("Pictures › Screenshots"), with a Choose… button.
+    private func folderRow(_ title: String, _ url: URL, set: @escaping (URL) -> Void) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 8) {
+                Text(Self.shown(url)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                Button("Choose…") {
+                    let panel = NSOpenPanel()
+                    panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.canCreateDirectories = true
+                    panel.directoryURL = url
+                    if panel.runModal() == .OK, let picked = panel.url { set(picked) }
+                }
+            }
+        }
+    }
+
+    static func shown(_ url: URL) -> String {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let path = url.path.hasPrefix(home + "/") ? String(url.path.dropFirst(home.count + 1)) : url.path
+        return path.split(separator: "/").joined(separator: " \u{203A} ")
     }
 }

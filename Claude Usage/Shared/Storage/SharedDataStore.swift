@@ -77,6 +77,7 @@ class SharedDataStore {
         static let shortcutShelfTray = "shortcutShelfTray"
         static let shortcutShelfClipboard = "shortcutShelfClipboard"
         static let shortcutShelfLibrary = "shortcutShelfLibrary"
+        static let shortcutMoveScreenshots = "shortcutMoveScreenshots"
 
         // Auto-Switch Profile
         static let autoSwitchProfileEnabled = "autoSwitchProfileEnabled"
@@ -606,6 +607,7 @@ class SharedDataStore {
         case .shelfTray: return Keys.shortcutShelfTray
         case .shelfClipboard: return Keys.shortcutShelfClipboard
         case .shelfLibrary: return Keys.shortcutShelfLibrary
+        case .moveScreenshots: return Keys.shortcutMoveScreenshots
         }
     }
 

@@ -39,6 +39,7 @@ final class TopShelfHost {
             switch action {
             case .shelfTray: model?.toggle(.tray)
             case .shelfClipboard: model?.toggle(.clipboard)
+            case .moveScreenshots: model?.screenshots.moveAll()
             default: model?.openLibrary?()
             }
         }
