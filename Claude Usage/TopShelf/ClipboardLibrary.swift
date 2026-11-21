@@ -265,7 +265,7 @@ struct ClipboardLibraryView: View {
     @ViewBuilder private func detail(_ c: ClipboardHistory.Clip?) -> some View {
         if let c {
             VStack(alignment: .leading, spacing: 14) {
-                ScrollView { content(c, big: true).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .topLeading) }
+                ScrollView { content(c, big: true).textSelection(.enabled).id(c.id).frame(maxWidth: .infinity, alignment: .topLeading) }
                     .frame(maxHeight: .infinity)
                     .background(Look.cardGradient, in: RoundedRectangle(cornerRadius: 14))
                 VStack(spacing: 6) {
