@@ -553,6 +553,12 @@ extension SelfTest {
         check("library: Delete removes just that clip", h.clips.count == before - 1 && !h.clips.contains { $0.id == gone.id })
         h.maxClips = 50; h.prune()
         check("library: a smaller history size applies at once, pinned kept", h.clips.count == 51 && h.clips.contains { $0.pinned })
+
+        let second = NSRect(x: 1440, y: 0, width: 1920, height: 1050)
+        check("library: moved to another display, it is centered there at its size",
+              ClipboardLibraryWindow.centered(NSSize(width: 1100, height: 680), in: second) == NSRect(x: 1850, y: 185, width: 1100, height: 680))
+        check("library: never bigger than a small display",
+              ClipboardLibraryWindow.centered(NSSize(width: 1100, height: 680), in: NSRect(x: 0, y: 0, width: 1000, height: 600)).size == NSSize(width: 1000, height: 600))
     }
 
     static func send(_ a: Agents, _ json: String, token: String? = nil, path: String = "/event") -> Agents.Handling {
