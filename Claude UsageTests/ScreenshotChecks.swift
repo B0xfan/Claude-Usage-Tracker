@@ -10,6 +10,7 @@ import XCTest
 import AppKit
 import ImageIO
 import UniformTypeIdentifiers
+import Vision
 @testable import Claude_Usage
 
 @MainActor
@@ -80,6 +81,11 @@ enum ScreenshotChecks {
         XCTAssertFalse(Screenshots.isNew("Screenshot.png", words: []))
         XCTAssertEqual(ScreenshotNamer.sanitize("\"Login: page/report.png\"\n"), "Login pagereport")
         XCTAssertEqual(ScreenshotNamer.sanitize(String(repeating: "word ", count: 30)).count, 64)
+        // Reading the words still works on the processor alone, the fallback when the Neural Engine won't load the text model.
+        let sampleCG = try XCTUnwrap(CGImageSourceCreateWithData(png as CFData, nil).flatMap { CGImageSourceCreateImageAtIndex($0, 0, nil) })
+        XCTAssertTrue(try VNRecognizeTextRequest().supportedComputeStageDevices[.main]?.contains { if case .cpu = $0 { true } else { false } } == true, "the processor can be chosen for reading")
+        XCTAssertTrue(PictureText.read(sampleCG, cpuOnly: true).localizedCaseInsensitiveContains("Login"), "the processor-only read finds the words")
+        XCTAssertTrue(PictureText.words(sampleCG).localizedCaseInsensitiveContains("Login"))
         let date = DateComponents(calendar: .current, year: 2026, month: 11, day: 19, hour: 12, minute: 39, second: 10).date!
         XCTAssertEqual(Screenshots.namedForm("Login page", date, ext: "png"), "Login page (2026-11-19 12.39.10).png")
 

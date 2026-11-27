@@ -1,5 +1,6 @@
 import AppKit
 import CryptoKit
+import ImageIO
 import Observation
 import SwiftUI
 import Vision
@@ -255,9 +256,8 @@ final class ClipboardHistory {
     /// Finds the words in a copied picture on the Mac itself (Vision), so the picture can be searched.
     private func recognizeText(in png: Data, key: String) {
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            let request = VNRecognizeTextRequest()
-            try? VNImageRequestHandler(data: png).perform([request])
-            let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
+            guard let src = CGImageSourceCreateWithData(png as CFData, nil), let cg = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return }
+            let words = PictureText.words(cg)
             guard !words.isEmpty else { return }
             DispatchQueue.main.async {
                 guard let self, let i = self.clips.firstIndex(where: { $0.key == key }) else { return }
