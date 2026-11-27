@@ -335,6 +335,7 @@ struct SettingsPageContent: View {
                     TopShelfSettingsView(model: model, part: .claudeCode)
                         .fixedSize(horizontal: false, vertical: true)
                         .scrollDisabled(true)
+                        .scrollContentBackground(.hidden)   // sits on the page's own background, not a grey block
                 }
                 if ClaudeCodeView.statuslineAvailable {
                     ClaudeCodeView(embedded: true)
