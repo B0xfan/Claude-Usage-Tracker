@@ -13,14 +13,19 @@ struct LanguageSettingsView: View {
     @State private var showRestartAlert = false
     @State private var pendingLanguage: LanguageManager.SupportedLanguage?
 
+    /// Set when this sits inside a combined page, which brings its own header and scrolling.
+    var embedded = false
+
     var body: some View {
-        ScrollView {
+        PageScroll(embedded: embedded) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
                 // Page Header
-                SettingsPageHeader(
-                    title: "language.title".localized,
-                    subtitle: "language.subtitle".localized
-                )
+                if !embedded {
+                    SettingsPageHeader(
+                        title: "language.title".localized,
+                        subtitle: "language.subtitle".localized
+                    )
+                }
 
                 // Current Language
                 SettingsSectionCard(
@@ -68,7 +73,7 @@ struct LanguageSettingsView: View {
 
                 Spacer()
             }
-            .padding(28)
+            .padding()
         }
         .alert("language.restart_required".localized, isPresented: $showRestartAlert) {
             Button("language.restart_now".localized, role: .destructive) {

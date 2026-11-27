@@ -139,3 +139,43 @@ struct BulletPoint: View {
     }
     .frame(width: 500, height: 600)
 }
+
+// MARK: - Combined pages
+
+/// A page scrolls by itself, or sits inside a combined page that scrolls for it.
+struct PageScroll<Content: View>: View {
+    let embedded: Bool
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if embedded { content } else { ScrollView { content } }
+    }
+}
+
+/// One Settings page made of several older pages, under a single header.
+struct SettingsStackPage<Content: View>: View {
+    let title: String
+    let subtitle: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                SettingsPageHeader(title: title, subtitle: subtitle).padding([.horizontal, .top])
+                content
+            }
+        }
+    }
+}
+
+/// Says that the settings below belong to the account picked in the sidebar, not the whole app.
+struct AccountScopeNote: View {
+    @ObservedObject private var profileManager = ProfileManager.shared
+
+    var body: some View {
+        Label("For the account \u{201C}\(profileManager.activeProfile?.name ?? "")\u{201D}. Switch accounts in the sidebar.", systemImage: "person.crop.circle")
+            .font(DesignTokens.Typography.caption)
+            .foregroundColor(.secondary)
+            .padding([.horizontal, .top])
+    }
+}

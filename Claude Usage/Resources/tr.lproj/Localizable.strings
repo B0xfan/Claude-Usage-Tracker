@@ -670,6 +670,7 @@
 "section.general_title" = "Genel";
 "section.general_desc" = "Genel ayarlar";
 "section.manage_profiles_title" = "Profilleri Yönet";
+"section.accounts_title" = "Hesaplar";
 "section.manage_profiles_desc" = "Profilleri yönet";
 
 /* ==================== */

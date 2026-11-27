@@ -63,13 +63,30 @@ nonisolated enum PNGShrinker {
     }
 }
 
+/// The words on a picture, read on this Mac (Vision).
+nonisolated enum PictureText {
+    /// After Usage Shelf had run for days the Neural Engine stopped loading the text model, so every read came back empty
+    /// (seen 2026-11-27, gone after a restart). An empty read is tried once more on the processor alone.
+    static func words(_ cg: CGImage) -> String {
+        let fast = read(cg, cpuOnly: false)
+        return fast.isEmpty ? read(cg, cpuOnly: true) : fast
+    }
+
+    static func read(_ cg: CGImage, cpuOnly: Bool) -> String {
+        let request = VNRecognizeTextRequest()
+        if cpuOnly, let cpu = (try? request.supportedComputeStageDevices[.main])?.first(where: { if case .cpu = $0 { true } else { false } }) {
+            request.setComputeDevice(cpu, for: .main)
+        }
+        try? VNImageRequestHandler(cgImage: cg).perform([request])
+        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
+    }
+}
+
 /// Names a screenshot with Apple Intelligence on this Mac, from the words on it and the app it was taken in.
 nonisolated enum ScreenshotNamer {
     /// shortcut: reads the screenshot's words, not the picture itself; picture input needs the macOS 27 tools, which the cloud build Macs don't have yet.
     static func title(_ cg: CGImage, app: String?) async -> String? {
-        let request = VNRecognizeTextRequest()
-        try? VNImageRequestHandler(cgImage: cg).perform([request])
-        let words = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
+        let words = PictureText.words(cg)
         guard !words.isEmpty else { return nil }
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {

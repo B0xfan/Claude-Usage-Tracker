@@ -6,13 +6,30 @@ struct TopShelfSettingsView: View {
     @Bindable var model: ShelfModel
     /// Set only in the Usage Shelf Settings window, where the shelf may be missing from the notch.
     var showShelf: (() -> Void)? = nil
+    /// Which part a Usage Shelf Settings page shows.
+    enum Part { case shelf, screenshots, claudeCode }
+    var part: Part = .shelf
     @State private var shrinkTo: Int?
-    @State private var combos: [ShortcutAction: KeyCombo?] = Dictionary(uniqueKeysWithValues:
-        [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary, .moveScreenshots].map { ($0, ShortcutManager.shared.shortcuts[$0]) })
-    @State private var shortcutWarning: String?
 
     var body: some View {
         Form {
+            if part == .shelf { shelfSections }
+            if part == .claudeCode {
+                SoundSettings(model: model)
+                Section("Claude Code") {
+                    Toggle("Open the shelf when a chat needs permission", isOn: $model.openForApproval)
+                        .toggleStyle(.switch)
+                    Text("Answer Allow, Always or Deny from the shelf, so the chat carries on without the terminal.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if part == .screenshots { ScreenshotSettings(shots: model.screenshots) }
+        }
+        .formStyle(.grouped)   // a grouped Form scrolls by itself when the window is shorter than its content
+        .frame(minHeight: 200)
+    }
+
+    @ViewBuilder private var shelfSections: some View {
             if let showShelf {
                 Section("Shelf") {
                     LabeledContent("Shelf missing from the notch?") {
@@ -28,21 +45,6 @@ struct TopShelfSettingsView: View {
                 delay("Hover open delay", "Pointer waits on the notch before it opens", $model.hoverDelay, upTo: 1.5)
                     .disabled(model.openMode == .click)   // hover never opens it in Click mode
                 delay("Hover close delay", "Time after the pointer leaves before it closes", $model.hoverCloseDelay, upTo: 3)
-            }
-            Section("Menu bar") {
-                Toggle("Show menu bar icon", isOn: $model.showMenuBarIcon)
-                    .toggleStyle(.switch)
-                LabeledContent("Quit Usage Shelf") {   // Top Shelf now lives inside the tracker
-                    Button("Quit") { NSApp.terminate(nil) }
-                }
-            }
-            WeatherSettings(weather: model.weather)
-            SoundSettings(model: model)
-            Section("Claude Code") {
-                Toggle("Open the shelf when a chat needs permission", isOn: $model.openForApproval)
-                    .toggleStyle(.switch)
-                Text("Answer Allow, Always or Deny from the shelf, so the chat carries on without the terminal.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Keeping things") {
                 Picker("Keep dropped files for", selection: $model.keepFilesFor) {
@@ -70,22 +72,7 @@ struct TopShelfSettingsView: View {
                     Text("Only the newest \((shrinkTo ?? 0).formatted()) are kept. Pinned clips stay. This can't be undone.")
                 }
             }
-            ScreenshotSettings(shots: model.screenshots)
-            Section {
-                shortcut(.shelfTray)
-                shortcut(.shelfClipboard)
-                shortcut(.shelfLibrary)
-                shortcut(.moveScreenshots)
-                if let shortcutWarning { Text(shortcutWarning).font(.caption).foregroundStyle(.orange) }
-            } header: {
-                Text("Keyboard shortcuts")
-            } footer: {
-                Text("Click a shortcut, then press the keys you want. Clear it to turn it off.").font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)   // a grouped Form scrolls by itself when the window is shorter than its content
-        .frame(width: 520)
-        .frame(minHeight: 200)
+            WeatherSettings(weather: model.weather)
     }
 
     private func delay(_ title: String, _ hint: String, _ value: Binding<Double>, upTo max: Double) -> some View {
@@ -97,20 +84,6 @@ struct TopShelfSettingsView: View {
         } label: {
             Text(title)
             Text(hint)
-        }
-    }
-
-    /// Same recorder and clash check as the tracker's own Shortcuts page.
-    private func shortcut(_ action: ShortcutAction) -> some View {
-        LabeledContent(action.displayName) {
-            ShortcutRecorderView(keyCombo: Binding(
-                get: { combos[action] ?? nil },
-                set: { newValue in
-                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
-                    shortcutWarning = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
-                    combos[action] = ShortcutManager.shared.shortcuts[action]
-                }
-            ))
         }
     }
 }

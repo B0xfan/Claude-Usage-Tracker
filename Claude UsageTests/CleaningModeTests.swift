@@ -48,7 +48,8 @@ final class CleaningModeTests: XCTestCase {
 
     // 1 and 23
     func testSettingsSidebarOrderAndEnglishCopy() {
-        XCTAssertEqual(SettingsSection.allCases.filter { !$0.isProfileSetting && !$0.isCredential && !$0.isBottomBarItem }.map(\.rawValue).suffix(2), ["keepAwake", "cleaningMode"])
+        XCTAssertEqual(SettingsSection.allCases.filter { !$0.isProfileSetting && !$0.isCredential && !$0.isBottomBarItem }.map(\.title),
+                       ["Shelf", "Screenshots", "Claude Code", "Menu bar", SettingsSection.shortcuts.title, "Keep Awake", "Cleaning Mode", "Accounts", "General"])
         XCTAssertEqual(SettingsSection.cleaningMode.title, "Cleaning Mode")
         XCTAssertTrue(SettingsSection.cleaningMode.description.contains("Clean your keyboard"))
         XCTAssertEqual(CleaningModeCopy.safety, "Cleaning Mode always ends when the timer runs out. Your power button and Touch ID still work. This is not a privacy lock.")

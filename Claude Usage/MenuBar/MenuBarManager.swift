@@ -745,7 +745,7 @@ class MenuBarManager: NSObject, ObservableObject {
             self?.presentCleaningSettings()
         }
         shelfSettingsObserver = NotificationCenter.default.addObserver(forName: .showShelfSettings, object: nil, queue: .main) { [weak self] _ in
-            self?.presentSettings(at: .notchHUD)
+            self?.presentSettings(at: .shelf)
         }
     }
 

@@ -5,19 +5,24 @@ struct AppSettingsView: View {
     @State private var launchAtLogin = LaunchAtLoginManager.shared.isEnabled
     @StateObject private var fixedSpaces: FixedSpacesController
 
-    init(controller: FixedSpacesController = .shared) {
+    /// Set when this sits inside a combined page, which brings its own header and scrolling.
+    let embedded: Bool
+
+    init(controller: FixedSpacesController = .shared, embedded: Bool = false) {
         _fixedSpaces = StateObject(wrappedValue: controller)
+        self.embedded = embedded
     }
 
     var body: some View {
-        ScrollView {
+        PageScroll(embedded: embedded) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
                 AppSettingsContent(
                     launchAtLoginTitle: "general.launch_at_login".localized,
                     launchAtLoginDescription: "general.launch_at_login.description".localized,
                     launchAtLogin: $launchAtLogin,
                     fixedSpaces: fixedSpaces.keepFixed,
-                    onFixedSpacesChange: fixedSpaces.setFixed
+                    onFixedSpacesChange: fixedSpaces.setFixed,
+                    showHeader: !embedded
                 )
             }
             .padding()
@@ -41,13 +46,16 @@ struct AppSettingsContent: View {
     @Binding var launchAtLogin: Bool
     let fixedSpaces: Bool
     let onFixedSpacesChange: (Bool) -> Void
+    var showHeader = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
-            SettingsPageHeader(
-                title: "section.app_settings_title".localized,
-                subtitle: "section.app_settings_desc".localized
-            )
+            if showHeader {
+                SettingsPageHeader(
+                    title: "section.app_settings_title".localized,
+                    subtitle: "section.app_settings_desc".localized
+                )
+            }
             SettingsSectionCard(title: launchAtLoginTitle, subtitle: launchAtLoginDescription) {
                 SettingToggle(
                     title: launchAtLoginTitle,

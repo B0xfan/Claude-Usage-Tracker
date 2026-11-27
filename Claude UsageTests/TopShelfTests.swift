@@ -553,6 +553,12 @@ extension SelfTest {
         check("library: Delete removes just that clip", h.clips.count == before - 1 && !h.clips.contains { $0.id == gone.id })
         h.maxClips = 50; h.prune()
         check("library: a smaller history size applies at once, pinned kept", h.clips.count == 51 && h.clips.contains { $0.pinned })
+
+        let second = NSRect(x: 1440, y: 0, width: 1920, height: 1050)
+        check("library: moved to another display, it is centered there at its size",
+              ClipboardLibraryWindow.centered(NSSize(width: 1100, height: 680), in: second) == NSRect(x: 1850, y: 185, width: 1100, height: 680))
+        check("library: never bigger than a small display",
+              ClipboardLibraryWindow.centered(NSSize(width: 1100, height: 680), in: NSRect(x: 0, y: 0, width: 1000, height: 600)).size == NSSize(width: 1000, height: 600))
     }
 
     static func send(_ a: Agents, _ json: String, token: String? = nil, path: String = "/event") -> Agents.Handling {
@@ -828,9 +834,9 @@ final class TopShelfSettingsPageTests: XCTestCase {
         let m = ShelfModel()
         var shown = 0
         func height<V: View>(_ v: V) -> CGFloat { NSHostingView(rootView: v.fixedSize(horizontal: false, vertical: true)).fittingSize.height }
-        let plain = height(TopShelfSettingsView(model: m))
+        let plain = height(TopShelfSettingsView(model: m).frame(width: 520))
         let page = TopShelfSettingsView(model: m, showShelf: { shown += 1 })
-        XCTAssertGreaterThan(height(page), plain, "the page shows an extra Shelf section")
+        XCTAssertGreaterThan(height(page.frame(width: 520)), plain, "the page shows an extra Shelf section")
         page.showShelf?()
         XCTAssertEqual(shown, 1)
 
@@ -845,6 +851,38 @@ final class TopShelfSettingsPageTests: XCTestCase {
             let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: rep)
             try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("dynamic-island-page-\(look).png"))
+        }
+    }
+}
+
+/// Every page of the regrouped Settings window, drawn for the cloud run's artifact (light and dark).
+@MainActor
+final class SettingsPagesPictureTests: XCTestCase {
+    func testEveryAppPageDraws() throws {
+        let name = "SettingsPagesPictureTests-\(UUID().uuidString)"
+        TopShelfDefaults.store = UserDefaults(suiteName: name)!
+        defer {
+            TopShelfDefaults.store.removePersistentDomain(forName: name)
+            TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
+        }
+        let pics = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        defer { try? FileManager.default.removeItem(at: pics) }
+        let m = ShelfModel(folder: pics)
+        let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let pages: [SettingsSection] = [.shelf, .screenshots, .claudeCode, .menuBar, .shortcuts, .manageProfiles, .appSettings]
+        for section in pages {
+            for (look, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+                let host = NSHostingView(rootView: SettingsPageContent(section: section, model: m).frame(width: 530, height: 1400))
+                host.appearance = NSAppearance(named: appearance)
+                host.frame = NSRect(x: 0, y: 0, width: 530, height: 1400)
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+                host.layoutSubtreeIfNeeded()
+                let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: rep)
+                try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("page-\(section.rawValue)-\(look).png"))
+            }
         }
     }
 }

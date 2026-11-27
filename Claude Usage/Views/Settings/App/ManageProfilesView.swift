@@ -19,7 +19,7 @@ struct ManageProfilesView: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
                 // Page Header
                 SettingsPageHeader(
-                    title: "profiles.title".localized,
+                    title: "section.accounts_title".localized,
                     subtitle: "profiles.subtitle".localized
                 )
 

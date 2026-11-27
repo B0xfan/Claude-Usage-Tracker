@@ -329,11 +329,23 @@ enum ClipboardLibraryWindow {
             w.contentMinSize = NSSize(width: 920, height: 480)
             w.center()
             w.setFrameAutosaveName("ClipboardLibrary")
+            // open on the Space John is in (also over a full-screen app), never jump him back to an older one
+            w.collectionBehavior.insert([.moveToActiveSpace, .fullScreenAuxiliary])
             window = w
+        }
+        // and on the display he is working on (where the pointer is), keeping the remembered size
+        if let w = window, let here = NSScreen.screens.first(where: { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }), w.screen != here {
+            w.setFrame(centered(w.frame.size, in: here.visibleFrame), display: false)
         }
         model.close()
         NSApp.activate(ignoringOtherApps: true)   // no Dock icon; bring the window forward
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// The window's frame centered on a display, no bigger than it.
+    static func centered(_ size: NSSize, in visible: NSRect) -> NSRect {
+        let w = min(size.width, visible.width), h = min(size.height, visible.height)
+        return NSRect(x: (visible.midX - w / 2).rounded(), y: (visible.midY - h / 2).rounded(), width: w, height: h)
     }
 
     /// Puts the clip on the clipboard, hides the library, goes back to the app John was in and pastes there.

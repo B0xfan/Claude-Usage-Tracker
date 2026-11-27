@@ -16,6 +16,16 @@ struct ShortcutsSettingsView: View {
     @State private var nextProfileCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.nextProfile]
     @State private var cleaningModeCombo: KeyCombo? = ShortcutManager.shared.shortcuts[.cleaningMode]
     @State private var cleaningModeWarning: String?
+    /// The shelf's shortcuts, moved here from the old Dynamic Island page so every shortcut is in one list.
+    private static let shelfActions: [(ShortcutAction, String, String)] = [
+        (.shelfTray, "tray", "Open the shelf at the notch"),
+        (.shelfClipboard, "doc.on.clipboard", "Open the shelf on its clipboard page"),
+        (.shelfLibrary, "books.vertical", "The whole clipboard history in a big window"),
+        (.moveScreenshots, "folder", "Move screenshots to the folder set on the Screenshots page"),
+    ]
+    @State private var shelfCombos: [ShortcutAction: KeyCombo?] = Dictionary(uniqueKeysWithValues:
+        shelfActions.map { ($0.0, ShortcutManager.shared.shortcuts[$0.0]) })
+    @State private var shelfWarning: String?
 
     var body: some View {
         ScrollView {
@@ -67,6 +77,18 @@ struct ShortcutsSettingsView: View {
                             combo: $nextProfileCombo,
                             action: .nextProfile
                         )
+                        ForEach(Self.shelfActions.indices, id: \.self) { i in
+                            let (action, icon, description) = Self.shelfActions[i]
+                            shortcutRow(
+                                icon: icon,
+                                title: action.displayName,
+                                description: description,
+                                combo: Binding(get: { shelfCombos[action] ?? nil }, set: { shelfCombos[action] = $0 }),
+                                action: action,
+                                warning: $shelfWarning
+                            )
+                        }
+                        if let shelfWarning { ShortcutWarningView(message: shelfWarning) }
                         // Keep awake
                         VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                             shortcutRow(
@@ -157,10 +179,9 @@ struct ShortcutsSettingsView: View {
             ShortcutRecorderView(keyCombo: Binding(
                 get: { combo.wrappedValue },
                 set: { newValue in
-                    let previous = combo.wrappedValue
                     let result = ShortcutManager.shared.setShortcut(newValue, for: action)
                     warning?.wrappedValue = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
-                    if result != .success { combo.wrappedValue = previous }
+                    combo.wrappedValue = ShortcutManager.shared.shortcuts[action]
                 }
             ))
         }

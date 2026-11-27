@@ -245,7 +245,7 @@ extension Notification.Name {
 struct SettingsView: View {
     /// The section a newly made window opens at (a fresh window is not listening yet when the section is posted).
     nonisolated(unsafe) static var openAt: SettingsSection?   // only touched on the main thread
-    @State private var selectedSection: SettingsSection = .appearance
+    @State private var selectedSection: SettingsSection = .shelf
     @StateObject private var profileManager = ProfileManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -282,60 +282,7 @@ struct SettingsView: View {
             .frame(width: 190)
 
             // Content
-            Group {
-                switch selectedSection {
-                // Credentials
-                case .claudeAI:
-                    PersonalUsageView()
-                case .apiConsole:
-                    APIBillingView()
-                case .cliAccount:
-                    CLIAccountView()
-                case .codexAccount:
-                    CodexAccountView()
-
-                // Profile Settings
-                case .appearance:
-                    AppearanceSettingsView()
-                case .general:
-                    GeneralSettingsView()
-                case .history:
-                    UsageHistoryView()
-
-                // Shared Settings
-                case .appSettings:
-                    AppSettingsView()
-                case .manageProfiles:
-                    ManageProfilesView()
-                case .language:
-                    LanguageSettingsView()
-                case .claudeCode:
-                    ClaudeCodeView()
-                case .notchHUD:
-                    if Constants.NotchHUD.replacedByTopShelf {
-                        // Top Shelf replaced this display; its settings live here too, so they stay reachable when the shelf is not showing.
-                        if let model = TopShelfHost.shared.model {
-                            TopShelfSettingsView(model: model, showShelf: { TopShelfHost.shared.showShelf() })
-                        } else {
-                            Text("Top Shelf is not running.").foregroundStyle(.secondary).padding()
-                        }
-                    } else {
-                        NotchHUDSettingsView()
-                    }
-                case .shortcuts:
-                    ShortcutsSettingsView()
-                case .popover:
-                    PopoverSettingsView()
-                case .keepAwake:
-                    KeepAwakeSettingsView()
-                case .cleaningMode:
-                    CleaningModeSettingsView()
-                case .debug:
-                    DebugNetworkLogView()
-                case .about:
-                    AboutView()
-                }
-            }
+            SettingsPageContent(section: selectedSection, model: TopShelfHost.shared.model)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 colorScheme == .dark
@@ -351,6 +298,93 @@ struct SettingsView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .showCleaningModeSettings)) { _ in
             selectedSection = .cleaningMode
+        }
+    }
+}
+
+/// The page for one sidebar item. Takes the shelf's model so tests can draw every page.
+struct SettingsPageContent: View {
+    let section: SettingsSection
+    let model: ShelfModel?
+
+    var body: some View {
+        switch section {
+        // Credentials
+        case .claudeAI:
+            PersonalUsageView()
+        case .apiConsole:
+            APIBillingView()
+        case .cliAccount:
+            CLIAccountView()
+        case .codexAccount:
+            CodexAccountView()
+
+        // Profile Settings
+        case .history:
+            UsageHistoryView()
+
+        // App pages
+        case .shelf:
+            shelfPage(.shelf)
+        case .screenshots:
+            shelfPage(.screenshots)
+        case .claudeCode:
+            SettingsStackPage(title: "Claude Code", subtitle: "How the shelf and your terminal show Claude Code chats") {
+                if let model {
+                    // a grouped Form scrolls by itself; here the page scrolls, so it takes its full height
+                    TopShelfSettingsView(model: model, part: .claudeCode)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .scrollDisabled(true)
+                        .scrollContentBackground(.hidden)   // sits on the page's own background, not a grey block
+                }
+                if ClaudeCodeView.statuslineAvailable {
+                    ClaudeCodeView(embedded: true)
+                }
+            }
+        case .menuBar:
+            SettingsStackPage(title: "Menu bar", subtitle: "The menu bar icon, how it looks, and the window it opens") {
+                if let model {
+                    SettingsSectionCard(title: "Menu bar icon") {
+                        SettingToggle(
+                            title: "Show menu bar icon",
+                            description: "The shelf's icon in the menu bar. The shelf still opens from the notch when it is off.",
+                            isOn: Binding(get: { model.showMenuBarIcon }, set: { model.showMenuBarIcon = $0 })
+                        )
+                    }
+                    .padding([.horizontal, .top])
+                }
+                PopoverSettingsView(embedded: true)
+                AccountScopeNote()
+                AppearanceSettingsView(embedded: true)
+            }
+        case .shortcuts:
+            ShortcutsSettingsView()
+        case .keepAwake:
+            KeepAwakeSettingsView()
+        case .cleaningMode:
+            CleaningModeSettingsView()
+        case .manageProfiles:
+            ManageProfilesView()
+        case .appSettings:
+            SettingsStackPage(title: SettingsSection.appSettings.title, subtitle: "Startup, language, updates and notifications") {
+                AppSettingsView(embedded: true)
+                LanguageSettingsView(embedded: true)
+                AccountScopeNote()
+                GeneralSettingsView(embedded: true)
+            }
+        case .debug:
+            DebugNetworkLogView()
+        case .about:
+            AboutView()
+        }
+    }
+
+    /// A page of the shelf's own settings, in the Mac's grouped style.
+    @ViewBuilder private func shelfPage(_ part: TopShelfSettingsView.Part) -> some View {
+        if let model {
+            TopShelfSettingsView(model: model, showShelf: part == .shelf ? { TopShelfHost.shared.showShelf() } : nil, part: part)
+        } else {
+            Text("Top Shelf is not running.").foregroundStyle(.secondary).padding()
         }
     }
 }
@@ -462,15 +496,8 @@ struct AppSettingsSection: View {
     @StateObject private var profileManager = ProfileManager.shared
 
     var sharedSections: [SettingsSection] {
-        // The Claude Code (statusline) section is hidden only when NO profile
-        // is on a provider with CLI sync AND nothing is installed — while the
-        // statusline scripts are installed, the section must stay reachable
-        // so the user can uninstall them. NotchHUD is hook-driven, app-wide
-        // Claude Code infrastructure and stays visible regardless.
-        let hasCLISyncProfile = profileManager.profiles.contains {
-            $0.provider.descriptor.capabilities.cliAccountSync
-        }
-        let showClaudeCode = hasCLISyncProfile || StatuslineService.shared.isInstalled
+        // Claude Code holds the shelf's chat settings and the terminal status line; hide it only when it would be empty.
+        let showClaudeCode = TopShelfHost.shared.model != nil || ClaudeCodeView.statuslineAvailable
         return SettingsSection.allCases.filter {
             guard !$0.isProfileSetting && !$0.isCredential && !$0.isBottomBarItem else { return false }
             if $0 == .claudeCode && !showClaudeCode { return false }
@@ -581,20 +608,18 @@ enum SettingsSection: String, CaseIterable {
     case codexAccount
 
     // Profile Settings
-    case appearance
-    case general
     case history
 
-    // Shared Settings
-    case appSettings
-    case manageProfiles
-    case language
+    // App pages, in sidebar order
+    case shelf
+    case screenshots
     case claudeCode
-    case notchHUD
+    case menuBar
     case shortcuts
-    case popover
     case keepAwake
     case cleaningMode
+    case manageProfiles
+    case appSettings
     case debug
     case about
 
@@ -604,16 +629,14 @@ enum SettingsSection: String, CaseIterable {
         case .apiConsole: return "section.api_console_title".localized
         case .cliAccount: return "section.cli_account_title".localized
         case .codexAccount: return "section.codex_account_title".localized
-        case .appearance: return "section.appearance_title".localized
-        case .general: return "section.general_title".localized
+        case .shelf: return "Shelf"
+        case .screenshots: return "Screenshots"
+        case .menuBar: return "Menu bar"
         case .history: return "section.history_title".localized
-        case .appSettings: return "section.app_settings_title".localized
-        case .manageProfiles: return "section.manage_profiles_title".localized
-        case .language: return "language.title".localized
-        case .claudeCode: return "settings.claude_cli".localized
-        case .notchHUD: return "notch.hud.section_title".localized
+        case .appSettings: return "section.general_title".localized
+        case .manageProfiles: return "section.accounts_title".localized
+        case .claudeCode: return "Claude Code"
         case .shortcuts: return "section.shortcuts_title".localized
-        case .popover: return "section.popover_title".localized
         case .keepAwake: return "Keep Awake"
         case .cleaningMode: return "Cleaning Mode"
         case .debug: return "section.debug_title".localized
@@ -627,16 +650,14 @@ enum SettingsSection: String, CaseIterable {
         case .apiConsole: return "dollarsign.circle.fill"
         case .cliAccount: return "terminal.fill"
         case .codexAccount: return "terminal.fill"
-        case .appearance: return "paintbrush.fill"
-        case .general: return "gearshape.fill"
+        case .shelf: return "inset.filled.topthird.rectangle"
+        case .screenshots: return "camera.viewfinder"
+        case .menuBar: return "menubar.rectangle"
         case .history: return "chart.bar.xaxis"
         case .appSettings: return "gearshape.2.fill"
         case .manageProfiles: return "person.2.fill"
-        case .language: return "globe"
         case .claudeCode: return "chevron.left.forwardslash.chevron.right"
-        case .notchHUD: return "inset.filled.topthird.rectangle"
         case .shortcuts: return "keyboard"
-        case .popover: return "rectangle.topthird.inset.filled"
         case .keepAwake: return "sun.max.fill"
         case .cleaningMode: return "sparkles"
         case .debug: return "ladybug.fill"
@@ -650,16 +671,14 @@ enum SettingsSection: String, CaseIterable {
         case .apiConsole: return "section.api_console_desc".localized
         case .cliAccount: return "section.cli_account_desc".localized
         case .codexAccount: return "section.codex_account_desc".localized
-        case .appearance: return "section.appearance_desc".localized
-        case .general: return "section.general_desc".localized
+        case .shelf: return "How the shelf opens, what it keeps, and the weather it shows"
+        case .screenshots: return "Naming, shrinking and moving screenshots"
+        case .menuBar: return "The menu bar icon, how it looks, and the window it opens"
         case .history: return "section.history_desc".localized
-        case .appSettings: return "section.app_settings_desc".localized
+        case .appSettings: return "Startup, language, updates and notifications"
         case .manageProfiles: return "section.manage_profiles_desc".localized
-        case .language: return "language.subtitle".localized
-        case .claudeCode: return "settings.claude_cli.description".localized
-        case .notchHUD: return "notch.hud.section_desc".localized
+        case .claudeCode: return "How the shelf and your terminal show Claude Code chats"
         case .shortcuts: return "section.shortcuts_desc".localized
-        case .popover: return "section.popover_desc".localized
         case .keepAwake: return "Stop your Mac from sleeping when you need it awake"
         case .cleaningMode: return "Clean your keyboard and screen without accidental input"
         case .debug: return "section.debug_desc".localized
@@ -686,7 +705,7 @@ enum SettingsSection: String, CaseIterable {
 
     var isProfileSetting: Bool {
         switch self {
-        case .appearance, .general, .history:
+        case .history:
             return true
         default:
             return false
@@ -782,7 +801,7 @@ struct ProfileCredentialCardsRow: View {
             // A credential section from another provider may still be selected
             // after a profile switch — snap back to a section that exists.
             if selectedSection.isCredential, !credentialSections.contains(selectedSection) {
-                selectedSection = credentialSections.first ?? .general
+                selectedSection = credentialSections.first ?? .history
             }
         }
     }

@@ -321,6 +321,7 @@
 "section.general_title" = "일반";
 "section.general_desc" = "일반 설정";
 "section.manage_profiles_title" = "프로필 관리";
+"section.accounts_title" = "계정";
 "section.manage_profiles_desc" = "프로필 관리";
 "section.history_title" = "기록";
 "section.history_desc" = "사용 기록 보기";
