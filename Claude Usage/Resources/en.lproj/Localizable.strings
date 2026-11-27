@@ -670,6 +670,7 @@
 "section.general_title" = "General";
 "section.general_desc" = "General settings";
 "section.manage_profiles_title" = "Manage Profiles";
+"section.accounts_title" = "Accounts";
 "section.manage_profiles_desc" = "Manage profiles";
 
 /* ==================== */

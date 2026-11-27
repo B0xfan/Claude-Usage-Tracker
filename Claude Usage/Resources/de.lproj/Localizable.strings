@@ -689,6 +689,7 @@
 "section.general_title" = "Allgemein";
 "section.general_desc" = "Allgemeine Einstellungen";
 "section.manage_profiles_title" = "Profile Verwalten";
+"section.accounts_title" = "Konten";
 "section.manage_profiles_desc" = "Profile verwalten";
 "section.history_title" = "Verlauf";
 "section.history_desc" = "Nutzungsverlauf anzeigen";

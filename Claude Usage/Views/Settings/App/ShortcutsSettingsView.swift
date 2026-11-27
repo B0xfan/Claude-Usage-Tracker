@@ -179,10 +179,9 @@ struct ShortcutsSettingsView: View {
             ShortcutRecorderView(keyCombo: Binding(
                 get: { combo.wrappedValue },
                 set: { newValue in
-                    let previous = combo.wrappedValue
                     let result = ShortcutManager.shared.setShortcut(newValue, for: action)
                     warning?.wrappedValue = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
-                    if result != .success { combo.wrappedValue = previous }
+                    combo.wrappedValue = ShortcutManager.shared.shortcuts[action]
                 }
             ))
         }

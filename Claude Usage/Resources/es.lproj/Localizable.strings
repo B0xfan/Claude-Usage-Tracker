@@ -670,6 +670,7 @@
 "section.general_title" = "General";
 "section.general_desc" = "Configuración general";
 "section.manage_profiles_title" = "Gestionar Perfiles";
+"section.accounts_title" = "Cuentas";
 "section.manage_profiles_desc" = "Gestionar perfiles";
 "section.history_title" = "Historial";
 "section.history_desc" = "Ver historial de uso";

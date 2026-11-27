@@ -5,12 +5,13 @@ struct AppSettingsView: View {
     @State private var launchAtLogin = LaunchAtLoginManager.shared.isEnabled
     @StateObject private var fixedSpaces: FixedSpacesController
 
-    init(controller: FixedSpacesController = .shared) {
-        _fixedSpaces = StateObject(wrappedValue: controller)
-    }
-
     /// Set when this sits inside a combined page, which brings its own header and scrolling.
-    var embedded = false
+    let embedded: Bool
+
+    init(controller: FixedSpacesController = .shared, embedded: Bool = false) {
+        _fixedSpaces = StateObject(wrappedValue: controller)
+        self.embedded = embedded
+    }
 
     var body: some View {
         PageScroll(embedded: embedded) {

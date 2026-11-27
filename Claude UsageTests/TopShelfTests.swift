@@ -834,9 +834,9 @@ final class TopShelfSettingsPageTests: XCTestCase {
         let m = ShelfModel()
         var shown = 0
         func height<V: View>(_ v: V) -> CGFloat { NSHostingView(rootView: v.fixedSize(horizontal: false, vertical: true)).fittingSize.height }
-        let plain = height(TopShelfSettingsView(model: m))
+        let plain = height(TopShelfSettingsView(model: m).frame(width: 520))
         let page = TopShelfSettingsView(model: m, showShelf: { shown += 1 })
-        XCTAssertGreaterThan(height(page), plain, "the page shows an extra Shelf section")
+        XCTAssertGreaterThan(height(page.frame(width: 520)), plain, "the page shows an extra Shelf section")
         page.showShelf?()
         XCTAssertEqual(shown, 1)
 

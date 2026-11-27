@@ -667,6 +667,7 @@
 "section.general_title" = "Général";
 "section.general_desc" = "Paramètres généraux";
 "section.manage_profiles_title" = "Gérer les Profils";
+"section.accounts_title" = "Comptes";
 "section.manage_profiles_desc" = "Gérer les profils";
 "section.history_title" = "Historique";
 "section.history_desc" = "Voir l'historique d'utilisation";

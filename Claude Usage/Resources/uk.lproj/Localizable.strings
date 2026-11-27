@@ -670,6 +670,7 @@
 "section.general_title" = "Загальні";
 "section.general_desc" = "Загальні налаштування";
 "section.manage_profiles_title" = "Керування профілями";
+"section.accounts_title" = "Облікові записи";
 "section.manage_profiles_desc" = "Керування профілями";
 
 /* ==================== */

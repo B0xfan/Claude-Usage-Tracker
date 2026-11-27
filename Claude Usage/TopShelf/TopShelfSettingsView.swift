@@ -6,18 +6,15 @@ struct TopShelfSettingsView: View {
     @Bindable var model: ShelfModel
     /// Set only in the Usage Shelf Settings window, where the shelf may be missing from the notch.
     var showShelf: (() -> Void)? = nil
-    /// Which part a Usage Shelf Settings page shows; the gear's window and the tests show all of it.
-    enum Part { case all, shelf, screenshots, claudeCode }
-    var part: Part = .all
+    /// Which part a Usage Shelf Settings page shows.
+    enum Part { case shelf, screenshots, claudeCode }
+    var part: Part = .shelf
     @State private var shrinkTo: Int?
-    @State private var combos: [ShortcutAction: KeyCombo?] = Dictionary(uniqueKeysWithValues:
-        [ShortcutAction.shelfTray, .shelfClipboard, .shelfLibrary, .moveScreenshots].map { ($0, ShortcutManager.shared.shortcuts[$0]) })
-    @State private var shortcutWarning: String?
 
     var body: some View {
         Form {
-            if part == .all || part == .shelf { shelfSections }
-            if part == .all || part == .claudeCode {
+            if part == .shelf { shelfSections }
+            if part == .claudeCode {
                 SoundSettings(model: model)
                 Section("Claude Code") {
                     Toggle("Open the shelf when a chat needs permission", isOn: $model.openForApproval)
@@ -26,11 +23,9 @@ struct TopShelfSettingsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            if part == .all || part == .screenshots { ScreenshotSettings(shots: model.screenshots) }
-            if part == .all { menuBarSection; shortcutSection }
+            if part == .screenshots { ScreenshotSettings(shots: model.screenshots) }
         }
         .formStyle(.grouped)   // a grouped Form scrolls by itself when the window is shorter than its content
-        .frame(width: part == .all ? 520 : nil)
         .frame(minHeight: 200)
     }
 
@@ -80,30 +75,6 @@ struct TopShelfSettingsView: View {
             WeatherSettings(weather: model.weather)
     }
 
-    private var menuBarSection: some View {
-            Section("Menu bar") {
-                Toggle("Show menu bar icon", isOn: $model.showMenuBarIcon)
-                    .toggleStyle(.switch)
-                LabeledContent("Quit Usage Shelf") {   // Top Shelf now lives inside the tracker
-                    Button("Quit") { NSApp.terminate(nil) }
-                }
-            }
-    }
-
-    private var shortcutSection: some View {
-            Section {
-                shortcut(.shelfTray)
-                shortcut(.shelfClipboard)
-                shortcut(.shelfLibrary)
-                shortcut(.moveScreenshots)
-                if let shortcutWarning { Text(shortcutWarning).font(.caption).foregroundStyle(.orange) }
-            } header: {
-                Text("Keyboard shortcuts")
-            } footer: {
-                Text("Click a shortcut, then press the keys you want. Clear it to turn it off.").font(.caption).foregroundStyle(.secondary)
-            }
-    }
-
     private func delay(_ title: String, _ hint: String, _ value: Binding<Double>, upTo max: Double) -> some View {
         LabeledContent {
             HStack(spacing: 10) {
@@ -113,20 +84,6 @@ struct TopShelfSettingsView: View {
         } label: {
             Text(title)
             Text(hint)
-        }
-    }
-
-    /// Same recorder and clash check as the tracker's own Shortcuts page.
-    private func shortcut(_ action: ShortcutAction) -> some View {
-        LabeledContent(action.displayName) {
-            ShortcutRecorderView(keyCombo: Binding(
-                get: { combos[action] ?? nil },
-                set: { newValue in
-                    let result = ShortcutManager.shared.setShortcut(newValue, for: action)
-                    shortcutWarning = resultWarning(result, combo: newValue ?? KeyCombo(keyCode: 0, modifierFlags: []))
-                    combos[action] = ShortcutManager.shared.shortcuts[action]
-                }
-            ))
         }
     }
 }

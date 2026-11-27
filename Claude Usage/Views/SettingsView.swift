@@ -337,7 +337,7 @@ struct SettingsPageContent: View {
                         .scrollDisabled(true)
                 }
                 if ClaudeCodeView.statuslineAvailable {
-                    ClaudeCodeView(embedded: true).padding()
+                    ClaudeCodeView(embedded: true)
                 }
             }
         case .menuBar:
@@ -352,9 +352,9 @@ struct SettingsPageContent: View {
                     }
                     .padding([.horizontal, .top])
                 }
-                PopoverSettingsView(embedded: true).padding()
+                PopoverSettingsView(embedded: true)
                 AccountScopeNote()
-                AppearanceSettingsView(embedded: true).padding()
+                AppearanceSettingsView(embedded: true)
             }
         case .shortcuts:
             ShortcutsSettingsView()
@@ -365,11 +365,11 @@ struct SettingsPageContent: View {
         case .manageProfiles:
             ManageProfilesView()
         case .appSettings:
-            SettingsStackPage(title: "General", subtitle: "Startup, language, updates and notifications") {
-                AppSettingsView(embedded: true).padding()
-                LanguageSettingsView(embedded: true).padding()
+            SettingsStackPage(title: SettingsSection.appSettings.title, subtitle: "Startup, language, updates and notifications") {
+                AppSettingsView(embedded: true)
+                LanguageSettingsView(embedded: true)
                 AccountScopeNote()
-                GeneralSettingsView(embedded: true).padding()
+                GeneralSettingsView(embedded: true)
             }
         case .debug:
             DebugNetworkLogView()
@@ -632,8 +632,8 @@ enum SettingsSection: String, CaseIterable {
         case .screenshots: return "Screenshots"
         case .menuBar: return "Menu bar"
         case .history: return "section.history_title".localized
-        case .appSettings: return "General"
-        case .manageProfiles: return "Accounts"
+        case .appSettings: return "section.general_title".localized
+        case .manageProfiles: return "section.accounts_title".localized
         case .claudeCode: return "Claude Code"
         case .shortcuts: return "section.shortcuts_title".localized
         case .keepAwake: return "Keep Awake"

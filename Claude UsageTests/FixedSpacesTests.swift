@@ -168,7 +168,7 @@ final class FixedSpacesTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Claude Usage/Views/Settings/App/AppSettingsView.swift")
         let source = try String(contentsOf: file)
-        XCTAssertTrue(source.contains("var body: some View {\n        VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {\n            SettingsPageHeader"))
+        XCTAssertTrue(source.contains("var body: some View {\n        VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {\n            if showHeader {\n                SettingsPageHeader"))
     }
 
     func testToggleBindingUsesInjectedController() {

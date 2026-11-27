@@ -670,6 +670,7 @@
 "section.general_title" = "通用";
 "section.general_desc" = "通用設定";
 "section.manage_profiles_title" = "管理設定檔";
+"section.accounts_title" = "帳戶";
 "section.manage_profiles_desc" = "管理設定檔";
 "section.history_title" = "歷史記錄";
 "section.history_desc" = "檢視使用歷史";

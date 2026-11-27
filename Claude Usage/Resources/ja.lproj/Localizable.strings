@@ -689,6 +689,7 @@
 "section.general_title" = "一般";
 "section.general_desc" = "一般設定";
 "section.manage_profiles_title" = "プロファイル管理";
+"section.accounts_title" = "アカウント";
 "section.manage_profiles_desc" = "プロファイルを管理";
 "section.history_title" = "履歴";
 "section.history_desc" = "使用履歴を表示";

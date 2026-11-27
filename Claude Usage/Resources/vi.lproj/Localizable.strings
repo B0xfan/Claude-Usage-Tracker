@@ -670,6 +670,7 @@
 "section.general_title" = "Chung";
 "section.general_desc" = "Cài đặt chung";
 "section.manage_profiles_title" = "Quản lý hồ sơ";
+"section.accounts_title" = "Tài khoản";
 "section.manage_profiles_desc" = "Quản lý hồ sơ";
 
 /* ==================== */
