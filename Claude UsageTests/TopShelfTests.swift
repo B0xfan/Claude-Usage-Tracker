@@ -855,6 +855,38 @@ final class TopShelfSettingsPageTests: XCTestCase {
     }
 }
 
+/// Every page of the regrouped Settings window, drawn for the cloud run's artifact (light and dark).
+@MainActor
+final class SettingsPagesPictureTests: XCTestCase {
+    func testEveryAppPageDraws() throws {
+        let name = "SettingsPagesPictureTests-\(UUID().uuidString)"
+        TopShelfDefaults.store = UserDefaults(suiteName: name)!
+        defer {
+            TopShelfDefaults.store.removePersistentDomain(forName: name)
+            TopShelfDefaults.store = UserDefaults(suiteName: TopShelfDefaults.suiteName) ?? .standard
+        }
+        let pics = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        defer { try? FileManager.default.removeItem(at: pics) }
+        let m = ShelfModel(folder: pics)
+        let folder = URL(fileURLWithPath: "/tmp/usage-shelf-settings-shots")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let pages: [SettingsSection] = [.shelf, .screenshots, .claudeCode, .menuBar, .shortcuts, .manageProfiles, .appSettings]
+        for section in pages {
+            for (look, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+                let host = NSHostingView(rootView: SettingsPageContent(section: section, model: m).frame(width: 530, height: 1400))
+                host.appearance = NSAppearance(named: appearance)
+                host.frame = NSRect(x: 0, y: 0, width: 530, height: 1400)
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+                host.layoutSubtreeIfNeeded()
+                let rep = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: rep)
+                try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: folder.appendingPathComponent("page-\(section.rawValue)-\(look).png"))
+            }
+        }
+    }
+}
+
 /// Pictures of the clipboard library window and the full settings page for the cloud run's artifact.
 @MainActor
 final class ClipboardLibraryPictureTests: XCTestCase {

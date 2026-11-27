@@ -44,14 +44,27 @@ struct ClaudeCodeView: View {
     @State private var statusMessage: String?
     @State private var isSuccess: Bool = true
 
+    /// Set when this sits inside a combined page, which brings its own header and scrolling.
+    var embedded = false
+
+    /// The status line part shows only while some account can sync with Claude Code, or while its scripts are
+    /// installed (so they can still be removed).
+    static var statuslineAvailable: Bool {
+        ProfileManager.shared.profiles.contains { $0.provider.descriptor.capabilities.cliAccountSync }
+            || StatuslineService.shared.isInstalled
+    }
+
     var body: some View {
-        ScrollView {
+        PageScroll(embedded: embedded) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
-                // Page Header
-                SettingsPageHeader(
-                    title: "claudecode.title".localized,
-                    subtitle: "claudecode.subtitle".localized
-                )
+                if embedded {
+                    Text("claudecode.title".localized).font(DesignTokens.Typography.sectionTitle)
+                } else {
+                    SettingsPageHeader(
+                        title: "claudecode.title".localized,
+                        subtitle: "claudecode.subtitle".localized
+                    )
+                }
 
                 // Preview Card
                 VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {

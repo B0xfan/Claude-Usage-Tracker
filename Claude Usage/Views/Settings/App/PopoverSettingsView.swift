@@ -11,13 +11,18 @@ struct PopoverSettingsView: View {
     @State private var timeDisplay: PopoverTimeDisplay = SharedDataStore.shared.loadPopoverTimeDisplay()
     @State private var timeFormat: TimeFormatPreference = SharedDataStore.shared.loadTimeFormatPreference()
 
+    /// Set when this sits inside a combined page, which brings its own header and scrolling.
+    var embedded = false
+
     var body: some View {
-        ScrollView {
+        PageScroll(embedded: embedded) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
-                SettingsPageHeader(
-                    title: "popover.title".localized,
-                    subtitle: "popover.subtitle".localized
-                )
+                if !embedded {
+                    SettingsPageHeader(
+                        title: "popover.title".localized,
+                        subtitle: "popover.subtitle".localized
+                    )
+                }
 
                 SettingsSectionCard(title: "popover.time_display".localized, subtitle: "popover.time_display_desc".localized) {
                     Picker("", selection: $timeDisplay) {

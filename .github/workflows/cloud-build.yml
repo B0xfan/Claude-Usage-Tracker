@@ -61,6 +61,7 @@ jobs:
             -only-testing:"Claude UsageTests/TopShelfTests" \
             -only-testing:"Claude UsageTests/TopShelfSettingsPageTests" \
             -only-testing:"Claude UsageTests/ClipboardLibraryPictureTests" \
+            -only-testing:"Claude UsageTests/SettingsPagesPictureTests" \
             -resultBundlePath "CleaningMode.xcresult" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \

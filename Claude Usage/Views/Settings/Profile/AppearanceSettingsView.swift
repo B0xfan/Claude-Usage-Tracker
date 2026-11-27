@@ -17,14 +17,19 @@ struct AppearanceSettingsView: View {
         profileManager.displayMode == .multi
     }
 
+    /// Set when this sits inside a combined page, which brings its own header and scrolling.
+    var embedded = false
+
     var body: some View {
-        ScrollView {
+        PageScroll(embedded: embedded) {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.section) {
                 // Page Header
-                SettingsPageHeader(
-                    title: "appearance.title".localized,
-                    subtitle: "appearance.subtitle".localized
-                )
+                if !embedded {
+                    SettingsPageHeader(
+                        title: "appearance.title".localized,
+                        subtitle: "appearance.subtitle".localized
+                    )
+                }
 
                 // Multi-profile mode warning
                 if isMultiProfileMode {
